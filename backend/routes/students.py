@@ -13,12 +13,144 @@ import json
 import traceback
 import requests
 from middleware.auth_middleware import auth_required
+from typing import Dict, Optional, Tuple
 
 students_bp = Blueprint('students', __name__)
 
 # Initialize Supabase clients
 supabase = get_supabase(admin=False)
 supabase_admin = get_supabase(admin=True)
+
+def create_student_with_auth(student_data: Dict) -> Tuple[Optional[Dict], Optional[str], Optional[str]]:
+    """
+    Create a new student with Supabase authentication
+    
+    Args:
+        student_data: Dictionary containing student details
+        
+    Returns:
+        Tuple containing (student_data, auth_user_id, temp_password) on success
+        or (None, None, error_message) on failure
+    """
+    try:
+        email = student_data.get('email', '').strip().lower()
+        full_name = student_data.get('full_name', '').strip()
+        
+        if not email or not full_name:
+            return None, None, 'Email and full name are required'
+            
+        # 1. Check if auth user with this email already exists
+        auth_check = supabase_admin.auth.admin.list_users().filter('email', 'eq', email).execute()
+        auth_user_id = None
+        
+        if auth_check and hasattr(auth_check, 'data') and auth_check.data:
+            # Get the auth user ID from the existing auth user
+            auth_user_id = auth_check.data[0]['id']
+            
+            # Check if a student already exists with this auth_user_id
+            existing_student = supabase.table('students').select('id').eq('user_id', auth_user_id).execute()
+            if existing_student.data:
+                return None, None, 'A student with this email already exists'
+                
+            return None, None, f'Auth user exists but no student record found. Auth user ID: {auth_user_id}'
+            
+        # Also check if email exists in students table (legacy check)
+        existing_email = supabase.table('students').select('id').eq('email', email).execute()
+        if existing_email.data:
+            return None, None, 'A student with this email already exists (legacy check)'
+            
+        # 2. Generate a secure temporary password
+        temp_password = generate_secure_password()
+        
+        # 3. Create auth user if it doesn't exist
+        try:
+            if not auth_user_id:  # Only create new auth user if one doesn't exist
+                auth_response = supabase_admin.auth.admin.create_user({
+                    "email": email,
+                    "password": temp_password,
+                    "email_confirm": True,
+                    "user_metadata": {
+                        "full_name": full_name,
+                        "role": "student"
+                    }
+                })
+                
+                if not auth_response or not hasattr(auth_response, 'user') or not auth_response.user:
+                    return None, None, 'Failed to create authentication user'
+                    
+                auth_user_id = auth_response.user.id
+                print(f"[INFO] Created new auth user: {auth_user_id}")
+            else:
+                print(f"[INFO] Using existing auth user: {auth_user_id}")
+            
+            # 4. Create profile in profiles table
+            profile_data = {
+                'id': auth_user_id,
+                'email': email,
+                'full_name': full_name,
+                'role': 'student',
+                'created_at': datetime.utcnow().isoformat(),
+                'updated_at': datetime.utcnow().isoformat()
+            }
+            
+            profile_response = supabase.table('profiles').insert(profile_data).execute()
+            if hasattr(profile_response, 'error') and profile_response.error:
+                raise Exception(f"Failed to create profile: {profile_response.error}")
+            
+            # 5. Create student record
+            student_db_data = {
+                'id': str(uuid.uuid4()),
+                'user_id': auth_user_id,  # This will match the auth user ID
+                'auth_user_id': auth_user_id,  # Store as separate field for easier querying
+                'email': email,
+                'full_name': full_name,
+                'created_at': datetime.utcnow().isoformat(),
+                'updated_at': datetime.utcnow().isoformat()
+            }
+            
+            # Add any additional student fields
+            optional_fields = ['phone', 'course_id', 'department_id', 'register_number', 
+                             'date_of_birth', 'gender', 'address']
+            
+            for field in optional_fields:
+                if field in student_data and student_data[field] is not None:
+                    student_db_data[field] = student_data[field]
+            
+            student_response = supabase.table('students').insert(student_db_data).execute()
+            if hasattr(student_response, 'error') and student_response.error:
+                raise Exception(f"Failed to create student record: {student_response.error}")
+            
+            # 6. Create credentials record (if needed)
+            try:
+                credentials_data = {
+                    'auth_user_id': auth_user_id,
+                    'email': email,
+                    'role': 'student',
+                    'is_active': True,
+                    'created_at': datetime.utcnow().isoformat(),
+                    'updated_at': datetime.utcnow().isoformat()
+                }
+                supabase.table('credentials').insert(credentials_data).execute()
+            except Exception as cred_error:
+                # Non-fatal error, just log it
+                current_app.logger.error(f"Failed to create credentials record: {str(cred_error)}")
+            
+            # Return the created student data
+            return student_db_data, auth_user_id, temp_password
+            
+        except Exception as auth_error:
+            # Cleanup auth user if it was created
+            if 'auth_user_id' in locals():
+                try:
+                    supabase_admin.auth.admin.delete_user(auth_user_id)
+                except:
+                    pass
+            raise auth_error
+            
+    except Exception as e:
+        error_msg = str(e)
+        current_app.logger.error(f"Error in create_student_with_auth: {error_msg}")
+        return None, None, error_msg
 
 def log_error(error_type, error, details=None):
     """Helper function to log errors consistently"""
@@ -661,14 +793,53 @@ def is_valid_date(date_str):
 @students_bp.route('/', methods=['POST'])
 @cross_origin()
 def add_student():
-    """Add a new student with comprehensive validation"""
-    print("\n" + "="*50)
-    print("[DEBUG] Starting student creation process")
-    print("="*50)
-    
+    """Add a new student with Supabase authentication"""
     try:
         data = request.get_json()
-        print("\n[DEBUG] Received student data:", json.dumps(data, indent=2))
+        
+        # Validate required fields
+        required_fields = ['full_name', 'email']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
+            return jsonify({
+                'success': False,
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }), 400
+            
+        # Validate email format
+        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_regex, data['email']):
+            return jsonify({
+                'success': False,
+                'error': 'Invalid email format. Please enter a valid email address.'
+            }), 400
+            
+        # Create student with auth
+        student_data, auth_user_id, temp_password = create_student_with_auth(data)
+        
+        if not student_data or not auth_user_id:
+            return jsonify({
+                'success': False,
+                'error': temp_password or 'Failed to create student'
+            }), 500
+            
+        # Return success response (don't include temp_password in production!)
+        return jsonify({
+            'success': True,
+            'message': 'Student created successfully',
+            'student_id': student_data['id'],
+            'auth_user_id': auth_user_id,
+            'temporary_password': temp_password  # Remove in production or secure this
+        }), 201
+        
+    except Exception as e:
+        error_msg = str(e)
+        current_app.logger.error(f"Error in add_student: {error_msg}\n{traceback.format_exc()}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to create student',
+            'details': error_msg if current_app.config.get('DEBUG') else None
+        }), 500
 
         # Validate required fields
         required_fields = ['full_name', 'email', 'phone', 'course_id', 'department_id']
