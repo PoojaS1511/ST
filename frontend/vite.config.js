@@ -18,16 +18,9 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       include: [
-        '@supabase/auth-helpers-nextjs',
-        '@supabase/ssr',
-        '@supabase/supabase-js',
         'react',
         'react-dom',
         'react-router-dom',
-        'tailwindcss',
-        'postcss',
-        'autoprefixer',
-        '@tailwindcss/nesting',
         'file-saver',
         'jspdf',
         'jspdf-autotable'
@@ -68,7 +61,7 @@ export default defineConfig(({ mode }) => {
       },
       proxy: {
         '^/api': {
-          target: 'http://localhost:5001',
+          target: env.VITE_API_BASE_URL || 'http://localhost:5001',
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path

@@ -10,7 +10,6 @@ from .career import Career
 from .course import Course
 
 # Import all models to ensure they are registered with SQLAlchemy
-from . import db_models  # noqa: F401
 from .room import Room  # noqa: F401
 from .student import Student  # noqa: F401
 

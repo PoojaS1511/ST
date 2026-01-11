@@ -275,15 +275,7 @@ const FeesList = () => {
         </Box>
         
         <Box mt={3}>
-          <Button
-            variant="outlined"
-            startIcon={<ReceiptIcon />}
-            onClick={() => navigate('/admin/reports/finance')}
-            sx={{ mb: 2 }}
-          >
-            Financial Reports
-          </Button>
-          
+                    
           <TableContainer component={Paper} elevation={0}>
             <Table>
               <TableHead>

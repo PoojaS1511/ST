@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const supabase = require('../app').supabase;
+const supabase = require('../supabase_client');
 
 // Get student statistics
 router.get('/stats', async (req, res) => {

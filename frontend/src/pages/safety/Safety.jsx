@@ -11,7 +11,7 @@ const Safety = () => {
   // Fetch security incidents
   const fetchIncidents = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/safety/incidents');
+      const response = await fetch(`${API_URL}/safety/incidents`);
       if (!response.ok) throw new Error('Failed to fetch incidents');
       const data = await response.json();
       setIncidents(data);
@@ -25,7 +25,7 @@ const Safety = () => {
   // Fetch lost & found items
   const fetchLostItems = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/safety/lost-found');
+      const response = await fetch(`${API_URL}/safety/lost-found`);
       if (!response.ok) throw new Error('Failed to fetch lost items');
       const data = await response.json();
       setLostItems(data);

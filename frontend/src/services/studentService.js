@@ -1,6 +1,9 @@
 import { supabase } from '../lib/supabase';
 import { createStudentWithAuth } from './authService';
 import { getAuthToken } from '../utils/auth';
+import { API_URL } from '../config';
+
+const API_BASE = API_URL.replace(/\/$/, '');
 
 // Validation schema for student data
 const validateStudentData = (data, isUpdate = false) => {
@@ -76,7 +79,7 @@ export const fetchStudents = async ({
     }
     
     // Make API request to backend with auth headers
-    const response = await fetch(`http://localhost:5001/api/students?${params.toString()}`, {
+    const response = await fetch(`${API_BASE}/students?${params.toString()}`, {
       method: 'GET',
       headers: headers,
       credentials: 'include' // Important for cookies if using httpOnly cookies
@@ -304,7 +307,7 @@ export const searchStudents = async (searchTerm, filters = {}) => {
     });
 
     // Make API request to backend
-    const response = await fetch(`http://localhost:5001/api/students/search?${params.toString()}`, {
+    const response = await fetch(`${API_BASE}/students?${params.toString()}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -327,12 +330,13 @@ export const searchStudents = async (searchTerm, filters = {}) => {
 };
 
 // Get student statistics (count by status, course, etc.)
+
 export const getStudentStatistics = async () => {
   try {
     console.log('Fetching student statistics...');
     
     // Make API request to backend with auth headers
-    const response = await fetch('http://localhost:5001/api/students/stats', {
+    const response = await fetch(`${API_BASE}/students/stats`, {
       method: 'GET',
       headers: getAuthHeaders(),
       credentials: 'include' // Important for cookies if using httpOnly cookies

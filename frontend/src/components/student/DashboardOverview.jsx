@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom';
 import { 
   AcademicCapIcon, 
   CalendarIcon, 
-  CashIcon, 
+  CurrencyDollarIcon, 
   ChartBarIcon, 
   ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ExclamationIcon
+  ExclamationTriangleIcon
 } from '@heroicons/react/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -59,7 +59,7 @@ const StatCard = ({ title, value, icon: Icon, color = 'indigo', link = '#' }) =>
 const RecentActivityItem = ({ type, title, description, time, status = 'info' }) => {
   const statusIcons = {
     success: <CheckCircleIcon className="h-5 w-5 text-green-500" />,
-    warning: <ExclamationIcon className="h-5 w-5 text-yellow-500" />,
+    warning: <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />,
     error: <XCircleIcon className="h-5 w-5 text-red-500" />,
     info: <CalendarIcon className="h-5 w-5 text-blue-500" />
   };
@@ -204,7 +204,7 @@ const DashboardOverview = () => {
         <StatCard 
           title="Pending Fees" 
           value={`$${stats.pendingFees.toLocaleString()}`} 
-          icon={CashIcon} 
+          icon={CurrencyDollarIcon} 
           color="yellow"
           link="/student/fees"
         />
@@ -278,7 +278,7 @@ const DashboardOverview = () => {
               >
                 <div className="flex-shrink-0">
                   <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                    <CashIcon className="h-6 w-6 text-green-600" />
+                    <CurrencyDollarIcon className="h-6 w-6 text-green-600" />
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">

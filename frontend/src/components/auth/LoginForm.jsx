@@ -3,6 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
+import { API_URL } from '../../config';
 
 const LoginForm = () => {
   const [userId, setUserId] = useState('');
@@ -63,7 +64,7 @@ const LoginForm = () => {
         if (error.message.includes('incorrect') || error.message.includes('Invalid login')) {
           console.log('Supabase auth failed, trying Flask API...');
           
-          const response = await fetch('http://localhost:5001/api/auth/login', {
+          const response = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -93,7 +94,7 @@ const LoginForm = () => {
 
           // Handle role-specific redirects
           if (role === 'teacher' || role === 'faculty') {
-            const redirectUrl = 'http://localhost:8081';
+            const redirectUrl = import.meta.env.VITE_FACULTY_APP_URL || 'http://localhost:8081';
             console.log('Redirecting to faculty app:', redirectUrl);
             // Store user data before redirect
             const userData = {

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { supabase } = require('../app');
+const { supabase } = require('../supabase_client');
 
 // Get all attendance records with filters
 router.get('/', async (req, res) => {

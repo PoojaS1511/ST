@@ -2,6 +2,20 @@
 Supabase client initialization utility.
 This module provides a consistent way to initialize and access Supabase clients.
 """
+import httpx
+
+# Store original __init__ method
+_original_init = httpx.Client.__init__
+
+# Patch httpx.Client.__init__ to ignore proxy argument
+def patched_init(self, *args, **kwargs):
+    # Remove proxy from kwargs if present
+    kwargs.pop('proxy', None)
+    return _original_init(self, *args, **kwargs)
+
+# Apply the patch
+httpx.Client.__init__ = patched_init
+
 from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
@@ -14,12 +28,7 @@ SUPABASE_URL = 'https://qkaaoeismqnhjyikgkme.supabase.co'
 SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrYWFvZWlzbXFuaGp5aWtna21lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzMDI1NzQsImV4cCI6MjA2OTg3ODU3NH0.o3K8BNVZucbqFWsPzIZJ_H8_ApR3uu9Cvjm5C9HFKX0'
 SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrYWFvZWlzbXFuaGp5aWtna21lIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDMwMjU3NCwiZXhwIjoyMDY5ODc4NTc0fQ.L1ZCNGBbQqrRjCI9IrmounuEtwux4yBmhvPBR4vU5Uw'
 
-# Verify we have all required environment variables
-if not all([SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY]):
-    raise ValueError(
-        "Missing required Supabase configuration in environment variables. "
-        "Please check your .env file for SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY"
-    )
+# Supabase configuration is hardcoded for this application
 
 # Log the configuration (without sensitive data)
 print(f"[SUPABASE] Initializing with URL: {SUPABASE_URL}")

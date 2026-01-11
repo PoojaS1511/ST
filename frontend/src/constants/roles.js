@@ -62,6 +62,8 @@ export const ROLE_PERMISSIONS = {
     canManageSettings: true,
     canViewReports: true,
     canExportData: true,
+    canManageQuality: true,
+    canViewQuality: true,
   },
   [ROLES.FACULTY]: {
     canViewDashboard: true,
@@ -70,12 +72,15 @@ export const ROLE_PERMISSIONS = {
     canManageResults: true,
     canViewStudents: true,
     canViewReports: true,
+    canViewQuality: true,
   },
   [ROLES.STAFF]: {
     canViewDashboard: true,
     canManageStudents: true,
     canViewAttendance: true,
     canViewResults: true,
+    canManageQuality: true,
+    canViewQuality: true,
   },
   [ROLES.ACCOUNTS]: {
     canViewDashboard: true,

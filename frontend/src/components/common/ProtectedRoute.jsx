@@ -161,15 +161,11 @@ const ProtectedRoute = ({
         console.log('Redirecting to:', redirectTo);
         routeAccessCache.set(cacheKey, { hasAccess: false, redirectPath: redirectTo });
         
-        // Use window.location for admin to ensure full page reload
-        if (user?.role === ROLES.ADMIN) {
-          window.location.href = redirectTo;
-        } else {
-          navigate(redirectTo, { 
-            replace: true,
-            state: { from: location }
-          });
-        }
+        // Use navigate for all users to prevent full page reload issues
+        navigate(redirectTo, { 
+          replace: true,
+          state: { from: location }
+        });
         return;
       }
 

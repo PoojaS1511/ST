@@ -1,7 +1,8 @@
 // frontend/src/services/courseService.js
 import axios from 'axios';
+import { API_URL } from '../config';
 
-const API_URL = 'http://localhost:5001/api'; // Update with your backend URL
+const API_BASE = API_URL.replace(/\/$/, ''); // Ensure no trailing slash
 
 const getCourses = async (filters = {}) => {
   try {

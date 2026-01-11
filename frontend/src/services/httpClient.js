@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { getSupabase } from '../lib/supabase';
+import { API_URL } from '../config';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+const API_BASE_URL = process.env.REACT_APP_API_URL || API_URL.replace(/\/$/, '');
 
 const httpClient = axios.create({
   baseURL: API_BASE_URL,

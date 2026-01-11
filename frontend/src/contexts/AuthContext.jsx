@@ -154,8 +154,9 @@ export const AuthProvider = ({ children }) => {
           setUser(adminUser);
           setSession(newSession);
           
-          // Only redirect if not already on an admin route
-          if (!currentPath.startsWith('/admin')) {
+          // Only redirect if not already on an admin route or a Quality page
+          // This allows admins to navigate to /quality/* without being forced back to the admin dashboard
+          if (!currentPath.startsWith('/admin') && !currentPath.startsWith('/quality')) {
             navigate('/admin/dashboard', { replace: true });
           }
         }
@@ -437,7 +438,10 @@ export const AuthProvider = ({ children }) => {
           case 'SIGNED_IN':
             if (session) {
               const updatedUser = await updateUserState(session);
-              if (updatedUser?.role === 'admin' && location.pathname !== '/admin/dashboard') {
+              // Only redirect to the admin dashboard if the current path is not already
+              // an admin route or a Quality page. This prevents interrupting admins
+              // who intentionally navigated to /quality/*.
+              if (updatedUser?.role === 'admin' && !location.pathname.startsWith('/admin') && !location.pathname.startsWith('/quality')) {
                 navigate('/admin/dashboard', { replace: true });
               }
             }

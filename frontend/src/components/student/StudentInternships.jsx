@@ -4,6 +4,7 @@ import internshipService from '../../services/internshipService';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { BriefcaseIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
+import { API_URL } from '../../config';
 
 const StudentInternships = () => {
   const { user } = useAuth();
@@ -129,7 +130,7 @@ const StudentInternships = () => {
     try {
       setLoading(true);
       // Call the refresh endpoint to force a refresh of internships
-      const response = await axios.post('http://localhost:5001/api/internships/refresh');
+      const response = await axios.post(`${API_URL}/internships/refresh`);
       console.log('Refresh response:', response.data);
       
       if (response.data && response.data.success) {

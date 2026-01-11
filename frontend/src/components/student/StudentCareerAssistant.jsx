@@ -13,7 +13,8 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+import { API_URL } from '../../config';
+const API_BASE = import.meta.env.VITE_API_URL || API_URL.replace(/\/$/, '');
 
 // RoadmapDetails component
 const RoadmapDetails = ({

@@ -14,5 +14,7 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
 email-validator==2.1.0.post1
-xhtml2pdf==0.2.13
+xhtml2pdf>=0.2.16
+reportlab>=4.0.0
 fpdf==1.7.2
+pandas==2.1.4

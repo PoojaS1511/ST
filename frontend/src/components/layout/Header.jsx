@@ -5,11 +5,11 @@ import { Menu, Transition, Dialog } from '@headlessui/react';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 
-// Configuration for different application URLs
+// Configuration for different application URLs (use Vite env vars when available)
 const APP_URLS = {
-  student: 'http://localhost:3001', // Student app URL
-  faculty: 'http://localhost:8081', // Faculty app running on port 8081
-  default: 'http://localhost:3000'  // Main application URL
+  student: import.meta.env.VITE_STUDENT_APP_URL || 'http://localhost:3001',
+  faculty: import.meta.env.VITE_FACULTY_APP_URL || 'http://localhost:8081',
+  default: import.meta.env.VITE_MAIN_APP_URL || 'http://localhost:3000'
 }
 
 const Header = () => {
@@ -30,7 +30,7 @@ const Header = () => {
 
   const roles = [
     { id: 'student', name: 'Student Login', path: '/student/login', app: 'main' },
-    { id: 'faculty', name: 'Faculty Login', path: 'http://localhost:8081/login', isExternal: true },
+    { id: 'faculty', name: 'Faculty Login', path: `${APP_URLS.faculty}/login`, isExternal: true },
     { id: 'admin', name: 'Admin Login', path: '/admin/login', app: 'main' }
   ];
   const location = useLocation();
@@ -51,7 +51,7 @@ const Header = () => {
   const navigation = [
     { 
       name: 'Home', 
-      href: 'http://localhost:3001',
+      href: APP_URLS.student,
       app: 'student'
     },
     { 
