@@ -39,7 +39,6 @@ const StudentCareerAssistant = lazy(() => import('./components/student/StudentCa
 const StudentNotifications = lazy(() => import('./components/student/StudentNotifications'));
 const StudentSettings = lazy(() => import('./components/student/StudentSettings'));
 const FacultyDashboard = lazy(() => import('./pages/faculty/FacultyDashboard'));
-const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminOverview = lazy(() => import('./components/admin/AdminOverview'));
 const DriverDashboard = lazy(() => import('./pages/driver/DriverDashboard'));
 const AddStudent = lazy(() => import('./components/admin/AddStudent'));
@@ -97,7 +96,6 @@ const AdminLayout = () => (
         </Suspense>
       </main>
     </div>
-    <Toaster position="top-right" />
   </div>
 );
 
@@ -111,7 +109,6 @@ const AppLayout = () => (
       </Suspense>
     </main>
     <Footer />
-    <Toaster position="top-right" />
   </div>
 );
 
@@ -158,7 +155,7 @@ const AppContent = () => {
           path="admin/*"
           element={
             <Suspense fallback={<LoadingScreen />}>
-              <ProtectedRoute allowedRoles={[ROLES.ADMIN]} redirectPath="/admin/login">
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
                 <AdminRoutes />
               </ProtectedRoute>
             </Suspense>
@@ -172,18 +169,6 @@ const AppContent = () => {
             <Suspense fallback={<LoadingScreen />}>
               <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.FACULTY, ROLES.STAFF]}>
                 <FinanceRoutes />
-              </ProtectedRoute>
-            </Suspense>
-          }
-        />
-
-        {/* HR Onboarding Routes */}
-        <Route 
-          path="hr-onboarding/*" 
-          element={
-            <Suspense fallback={<LoadingScreen />}>
-              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.HR]}>
-                <HROnboardingRoutes />
               </ProtectedRoute>
             </Suspense>
           }

@@ -3,20 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Menu, Transition } from '@headlessui/react';
 import { 
-  BellIcon, 
-  MagnifyingGlassIcon, 
-  UserCircleIcon, 
+  BellIcon,
+  MagnifyingGlassIcon,
+  UserCircleIcon,
   ArrowRightOnRectangleIcon,
   Cog6ToothIcon,
   UserIcon,
   ShieldCheckIcon
 } from '@heroicons/react/24/outline';
-
 const AdminHeader = () => {
-  const [searchQuery, setSearchQuery] = useState('');
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  
+  const [searchQuery, setSearchQuery] = useState('');
   const handleLogout = async () => {
     try {
       await logout();
@@ -27,7 +25,7 @@ const AdminHeader = () => {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
+    <header className="sticky top-0 z-10 bg-white shadow-sm border-b border-gray-200">
       <div className="flex items-center justify-between px-6 py-4">
         {/* Search Bar */}
         <div className="flex-1 max-w-lg">
@@ -157,19 +155,10 @@ const AdminHeader = () => {
               </Menu.Items>
             </Transition>
           </Menu>
-          <div className="relative">
-            <button className="flex items-center space-x-3 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2">
-              <UserCircleIcon className="h-8 w-8 text-gray-400" />
-              <div className="hidden md:block text-left">
-                <div className="font-medium text-black">Admin User</div>
-                <div className="text-xs text-gray-500">Administrator</div>
-              </div>
-            </button>
-          </div>
         </div>
       </div>
     </header>
-  )
+  );
 }
 
 export default AdminHeader

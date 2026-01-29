@@ -11,33 +11,28 @@ from models.transport_models import (
 )
 from models.supabase_transport_adapter import (
     SupabaseTransportStudent, SupabaseTransportFaculty, SupabaseBus, 
-    SupabaseDriver, SupabaseRoute
+    SupabaseDriver, SupabaseRoute, SupabaseTransportAttendance,
+    SupabaseLiveLocation, SupabaseTransportActivity
 )
 from models.supabase_transport_fee import SupabaseTransportFee
 from supabase_client import get_supabase
 
 class TransportController:
     """Main Transport Controller"""
-    
+
     def __init__(self):
         # Use Supabase models for production (where available)
         supabase = get_supabase()
-        supabase_url = supabase.supabase_url
-        supabase_key = supabase.supabase_key
-        
-        self.student_model = SupabaseTransportStudent(supabase_url, supabase_key)
-        self.faculty_model = SupabaseTransportFaculty(supabase_url, supabase_key)
-        self.bus_model = SupabaseBus(supabase_url, supabase_key)
-        self.driver_model = SupabaseDriver(supabase_url, supabase_key)
-        self.route_model = SupabaseRoute(supabase_url, supabase_key)
-        
-        # Use SQLite for now to avoid Supabase key issues
-        self.fee_model = TransportFee()
-        
-        # Use SQLite models for remaining modules
-        self.attendance_model = TransportAttendance()
-        self.location_model = LiveLocation()
-        self.activity_model = TransportActivity()
+
+        self.student_model = SupabaseTransportStudent(supabase)
+        self.faculty_model = SupabaseTransportFaculty(supabase)
+        self.bus_model = SupabaseBus(supabase)
+        self.driver_model = SupabaseDriver(supabase)
+        self.route_model = SupabaseRoute(supabase)
+        self.fee_model = SupabaseTransportFee(supabase)
+        self.attendance_model = SupabaseTransportAttendance(supabase)
+        self.location_model = SupabaseLiveLocation(supabase)
+        self.activity_model = SupabaseTransportActivity(supabase)
 
 class DashboardController(TransportController):
     """Dashboard Metrics Controller"""
@@ -59,28 +54,24 @@ class DashboardController(TransportController):
             else:
                 attendance_percentage = 92.5  # Default value
             
-            # Calculate fee collection rate
-            fee_records = self.fee_model.get_all()
-            if fee_records:
-                paid_count = len([r for r in fee_records if r['payment_status'] == 'Paid'])
-                fee_collection_rate = round((paid_count / len(fee_records)) * 100, 1)
-            else:
-                fee_collection_rate = 87.3  # Default value
+            # Calculate fee collection rate and pending fees using fee stats
+            fee_stats = self.fee_model.get_payment_statistics()
+            fee_collection_rate = fee_stats.get('collection_rate', 87.3)
+            pending_fees = fee_stats.get('pending_amount', 0)
             
             # Get active routes
             active_routes = len(self.route_model.get_all({'status': 'Active'}))
-            
-            # Calculate pending fees
-            pending_fees = sum([r['amount'] for r in fee_records 
-                              if r['payment_status'] in ['Pending', 'Overdue']])
             
             # Get recent activities
             try:
                 recent_activities = self.activity_model.get_recent(4)
                 formatted_activities = []
                 for activity in recent_activities:
-                    # Handle both datetime objects and string timestamps
-                    activity_time = activity['time']
+                    # Handle different time field names (time or created_at)
+                    activity_time = activity.get('time') or activity.get('created_at')
+                    if not activity_time:
+                        activity_time = datetime.now()
+                    
                     if isinstance(activity_time, str):
                         try:
                             # Try parsing ISO format datetime string
@@ -127,13 +118,19 @@ class DashboardController(TransportController):
             
             metrics = {
                 'totalStudents': total_students,
+                'total_students': total_students,
                 'facultyUsers': faculty_users,
+                'total_faculty': faculty_users,
                 'activeBuses': active_buses,
+                'total_buses': active_buses,
                 'totalDrivers': total_drivers,
                 'attendancePercentage': attendance_percentage,
                 'feeCollectionRate': fee_collection_rate,
                 'activeRoutes': active_routes,
+                'total_routes': active_routes,
                 'pendingFees': pending_fees,
+                'total_fees_pending': pending_fees,
+                'active_students': total_students, # Assuming all are active for now
                 'recentActivities': formatted_activities,
                 'monthlyTrends': monthly_trends
             }
@@ -150,29 +147,44 @@ class StudentController(TransportController):
         """Get all transport students with pagination"""
         try:
             filters = request.args.to_dict()
-            
+
             # Extract pagination parameters
             limit = int(filters.get('limit', 50))
             offset = int(filters.get('offset', 0))
             page = int(filters.get('page', 1))
-            
+
             # Remove pagination from filters for the model
-            model_filters = {k: v for k, v in filters.items() 
+            model_filters = {k: v for k, v in filters.items()
                            if k not in ['limit', 'offset', 'page']}
-            
+
             # Get all students (for now - could optimize with pagination in model)
             all_students = self.student_model.get_all(model_filters)
-            
+
+            # Debug logging
+            print(f"DEBUG: Retrieved {len(all_students)} students from model")
+            if all_students:
+                print(f"DEBUG: First student: {all_students[0]}")
+
             # Apply pagination
             total = len(all_students)
             start_idx = offset if offset > 0 else (page - 1) * limit
             end_idx = start_idx + limit
             paginated_students = all_students[start_idx:end_idx]
-            
+
+            # Transform data for frontend compatibility
+            transformed_students = []
+            for student in paginated_students:
+                s_copy = student.copy()
+                if 'name' in s_copy:
+                    s_copy['full_name'] = s_copy['name']
+                if 'student_id' in s_copy:
+                    s_copy['register_number'] = s_copy['student_id']
+                transformed_students.append(s_copy)
+
             # Return paginated response
             return jsonify({
-                'success': True, 
-                'data': paginated_students, 
+                'success': True,
+                'data': transformed_students,
                 'total': total,
                 'limit': limit,
                 'offset': offset,
@@ -180,6 +192,7 @@ class StudentController(TransportController):
                 'pages': (total + limit - 1) // limit
             })
         except Exception as e:
+            print(f"ERROR in get_students: {str(e)}")
             return jsonify({'success': False, 'error': str(e)}), 500
     
     def add_student(self):
@@ -242,13 +255,54 @@ class FacultyController(TransportController):
     """Transport Faculty Controller"""
     
     def get_faculty(self):
-        """Get all transport faculty"""
+        """Get all transport faculty with pagination"""
         try:
             filters = request.args.to_dict()
-            faculty = self.faculty_model.get_all(filters)
-            return {'success': True, 'data': faculty, 'total': len(faculty)}
+            
+            # Extract pagination parameters
+            limit = int(filters.get('limit', 50))
+            offset = int(filters.get('offset', 0))
+            page = int(filters.get('page', 1))
+
+            # Remove pagination from filters for the model
+            model_filters = {k: v for k, v in filters.items()
+                           if k not in ['limit', 'offset', 'page']}
+
+            all_faculty = self.faculty_model.get_all(model_filters)
+            
+            # Transform data to match expected API schema
+            transformed_faculty = []
+            for faculty in all_faculty:
+                # Create a new dict to avoid modifying original
+                transformed_record = faculty.copy()
+                
+                # Map fields for frontend compatibility
+                if 'name' in transformed_record:
+                    transformed_record['full_name'] = transformed_record['name']
+                
+                # Map 'phone' to 'phone_number' for API compatibility
+                if 'phone' in transformed_record:
+                    transformed_record['phone_number'] = transformed_record['phone']
+                
+                transformed_faculty.append(transformed_record)
+            
+            # Apply pagination
+            total = len(transformed_faculty)
+            start_idx = offset if offset > 0 else (page - 1) * limit
+            end_idx = start_idx + limit
+            paginated_faculty = transformed_faculty[start_idx:end_idx]
+
+            return jsonify({
+                'success': True, 
+                'data': paginated_faculty, 
+                'total': total,
+                'limit': limit,
+                'offset': offset,
+                'page': page,
+                'pages': (total + limit - 1) // limit
+            })
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return jsonify({'success': False, 'error': str(e)}), 500
     
     def add_faculty(self):
         """Add new transport faculty"""
@@ -259,7 +313,7 @@ class FacultyController(TransportController):
             required_fields = ['faculty_id', 'name', 'email']
             for field in required_fields:
                 if field not in data:
-                    return {'success': False, 'error': f'{field} is required'}, 400
+                    return jsonify({'success': False, 'error': f'{field} is required'}), 400
             
             faculty = self.faculty_model.create(data)
             
@@ -269,9 +323,9 @@ class FacultyController(TransportController):
                 request.headers.get('User-ID'), data
             )
             
-            return {'success': True, 'data': faculty}
+            return jsonify({'success': True, 'data': faculty})
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return jsonify({'success': False, 'error': str(e)}), 500
     
     def update_faculty(self, faculty_id):
         """Update transport faculty"""
@@ -285,9 +339,9 @@ class FacultyController(TransportController):
                 request.headers.get('User-ID'), data
             )
             
-            return {'success': True, 'data': faculty}
+            return jsonify({'success': True, 'data': faculty})
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return jsonify({'success': False, 'error': str(e)}), 500
     
     def delete_faculty(self, faculty_id):
         """Delete transport faculty"""
@@ -300,21 +354,46 @@ class FacultyController(TransportController):
                     'faculty', f'Faculty {faculty_id} removed from transport system',
                     request.headers.get('User-ID')
                 )
-                return {'success': True}
+                return jsonify({'success': True})
             else:
-                return {'success': False, 'error': 'Faculty not found'}
+                return jsonify({'success': False, 'error': 'Faculty not found'}), 404
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return jsonify({'success': False, 'error': str(e)}), 500
 
 class BusController(TransportController):
     """Bus Controller"""
     
     def get_buses(self):
-        """Get all buses"""
+        """Get all buses with pagination"""
         try:
             filters = request.args.to_dict()
-            buses = self.bus_model.get_all(filters)
-            return jsonify({'success': True, 'data': buses, 'total': len(buses)})
+            
+            # Extract pagination parameters
+            limit = int(filters.get('limit', 50))
+            offset = int(filters.get('offset', 0))
+            page = int(filters.get('page', 1))
+
+            # Remove pagination from filters for the model
+            model_filters = {k: v for k, v in filters.items()
+                           if k not in ['limit', 'offset', 'page']}
+
+            all_buses = self.bus_model.get_all(model_filters)
+            
+            # Apply pagination
+            total = len(all_buses)
+            start_idx = offset if offset > 0 else (page - 1) * limit
+            end_idx = start_idx + limit
+            paginated_buses = all_buses[start_idx:end_idx]
+
+            return jsonify({
+                'success': True, 
+                'data': paginated_buses, 
+                'total': total,
+                'limit': limit,
+                'offset': offset,
+                'page': page,
+                'pages': (total + limit - 1) // limit
+            })
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     
@@ -378,11 +457,44 @@ class DriverController(TransportController):
     """Driver Controller"""
     
     def get_drivers(self):
-        """Get all drivers"""
+        """Get all drivers with pagination"""
         try:
             filters = request.args.to_dict()
-            drivers = self.driver_model.get_all(filters)
-            return jsonify({'success': True, 'data': drivers, 'total': len(drivers)})
+            
+            # Extract pagination parameters
+            limit = int(filters.get('limit', 50))
+            offset = int(filters.get('offset', 0))
+            page = int(filters.get('page', 1))
+
+            # Remove pagination from filters for the model
+            model_filters = {k: v for k, v in filters.items()
+                           if k not in ['limit', 'offset', 'page']}
+
+            all_drivers = self.driver_model.get_all(model_filters)
+            
+            # Apply pagination
+            total = len(all_drivers)
+            start_idx = offset if offset > 0 else (page - 1) * limit
+            end_idx = start_idx + limit
+            paginated_drivers = all_drivers[start_idx:end_idx]
+
+            # Transform data for frontend compatibility
+            transformed_drivers = []
+            for driver in paginated_drivers:
+                d_copy = driver.copy()
+                if 'name' in d_copy:
+                    d_copy['full_name'] = d_copy['name']
+                transformed_drivers.append(d_copy)
+
+            return jsonify({
+                'success': True, 
+                'data': transformed_drivers, 
+                'total': total,
+                'limit': limit,
+                'offset': offset,
+                'page': page,
+                'pages': (total + limit - 1) // limit
+            })
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     
@@ -446,11 +558,67 @@ class RouteController(TransportController):
     """Route Controller"""
     
     def get_routes(self):
-        """Get all routes"""
+        """Get all routes with pagination"""
         try:
             filters = request.args.to_dict()
-            routes = self.route_model.get_all(filters)
-            return jsonify({'success': True, 'data': routes, 'total': len(routes)})
+            
+            # Extract pagination parameters
+            limit = int(filters.get('limit', 50))
+            offset = int(filters.get('offset', 0))
+            page = int(filters.get('page', 1))
+
+            # Remove pagination from filters for the model
+            model_filters = {k: v for k, v in filters.items()
+                           if k not in ['limit', 'offset', 'page']}
+
+            all_routes = self.route_model.get_all(model_filters)
+            
+            # Apply pagination
+            total = len(all_routes)
+            start_idx = offset if offset > 0 else (page - 1) * limit
+            end_idx = start_idx + limit
+            paginated_routes = all_routes[start_idx:end_idx]
+
+            # Transform data for frontend compatibility
+            transformed_routes = []
+            for route in paginated_routes:
+                r_copy = route.copy()
+                
+                # Derive start_point and end_point from stops if they exist
+                if 'stops' in r_copy and isinstance(r_copy['stops'], list) and len(r_copy['stops']) > 0:
+                    stops = r_copy['stops']
+                    # Handle both list of strings and list of dicts
+                    first_stop = stops[0]
+                    last_stop = stops[-1]
+                    
+                    if isinstance(first_stop, dict):
+                        r_copy['start_point'] = first_stop.get('name', 'Origin')
+                    else:
+                        r_copy['start_point'] = str(first_stop)
+                        
+                    if isinstance(last_stop, dict):
+                        r_copy['end_point'] = last_stop.get('name', 'Destination')
+                    else:
+                        r_copy['end_point'] = str(last_stop)
+                else:
+                    r_copy['start_point'] = 'Not Specified'
+                    r_copy['end_point'] = 'College'
+
+                # Add distance if missing
+                if 'distance' not in r_copy:
+                    r_copy['distance'] = 'N/A'
+                
+                transformed_routes.append(r_copy)
+
+            return jsonify({
+                'success': True, 
+                'data': transformed_routes, 
+                'total': total,
+                'limit': limit,
+                'offset': offset,
+                'page': page,
+                'pages': (total + limit - 1) // limit
+            })
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     
@@ -525,11 +693,41 @@ class FeeController(TransportController):
     """Transport Fee Controller"""
     
     def get_fees(self):
-        """Get all transport fees"""
+        """Get all transport fees with pagination"""
         try:
             filters = request.args.to_dict()
-            fees = self.fee_model.get_all(filters)
-            return jsonify({'success': True, 'data': fees, 'total': len(fees)})
+            
+            # Extract pagination parameters
+            limit = int(filters.get('limit', 50))
+            offset = int(filters.get('offset', 0))
+            page = int(filters.get('page', 1))
+
+            # Remove pagination from filters for the model
+            model_filters = {k: v for k, v in filters.items()
+                           if k not in ['limit', 'offset', 'page']}
+
+            # Get all fees
+            all_fees = self.fee_model.get_all(model_filters)
+            
+            # Apply pagination
+            total = len(all_fees)
+            start_idx = offset if offset > 0 else (page - 1) * limit
+            end_idx = start_idx + limit
+            paginated_fees = all_fees[start_idx:end_idx]
+
+            # Get summary statistics
+            summary = self.fee_model.get_payment_statistics()
+
+            return jsonify({
+                'success': True, 
+                'data': paginated_fees, 
+                'total': total,
+                'limit': limit,
+                'offset': offset,
+                'page': page,
+                'pages': (total + limit - 1) // limit,
+                'summary': summary
+            })
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     
@@ -603,11 +801,36 @@ class AttendanceController(TransportController):
     """Transport Attendance Controller"""
     
     def get_attendance(self):
-        """Get attendance records"""
+        """Get attendance records with pagination"""
         try:
             filters = request.args.to_dict()
-            attendance = self.attendance_model.get_all(filters)
-            return jsonify({'success': True, 'data': attendance, 'total': len(attendance)})
+
+            # Extract pagination parameters
+            limit = int(filters.get('limit', 50))
+            offset = int(filters.get('offset', 0))
+            page = int(filters.get('page', 1))
+
+            # Remove pagination from filters for the model
+            model_filters = {k: v for k, v in filters.items()
+                           if k not in ['limit', 'offset', 'page']}
+
+            attendance = self.attendance_model.get_all(model_filters)
+            
+            # Apply pagination
+            total = len(attendance)
+            start_idx = offset if offset > 0 else (page - 1) * limit
+            end_idx = start_idx + limit
+            paginated_attendance = attendance[start_idx:end_idx]
+
+            return jsonify({
+                'success': True, 
+                'data': paginated_attendance, 
+                'total': total,
+                'limit': limit,
+                'offset': offset,
+                'page': page,
+                'pages': (total + limit - 1) // limit
+            })
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     

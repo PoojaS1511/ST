@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  UserPlusIcon, 
+import {
+  UserPlusIcon,
   MagnifyingGlassIcon,
   DocumentArrowUpIcon,
   ArrowPathIcon,
@@ -10,7 +10,7 @@ import {
   ClockIcon
 } from '@heroicons/react/24/outline';
 import { admissionsService } from '../../services/admissionsService';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 
 const AdmissionManagement = () => {
   const navigate = useNavigate();

@@ -21,7 +21,7 @@ class CareerCourseBase(BaseModel):
     course_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         json_schema_extra = {
             "example": {
                 "title": "Introduction to Python",
@@ -53,7 +53,7 @@ class CareerCourseUpdate(BaseModel):
     course_id: Optional[int] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CareerCourseInDB(CareerCourseBase):
     """Model for career course data in the database"""
@@ -61,7 +61,7 @@ class CareerCourseInDB(CareerCourseBase):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # SQLAlchemy Model
 class CareerCourse(Base):

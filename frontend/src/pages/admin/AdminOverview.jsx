@@ -30,48 +30,36 @@ const AdminOverview = () => {
       try {
         setLoading(true);
         setError(null);
-        console.log('Fetching dashboard data...');
+        console.log('Fetching dashboard data from backend API...');
 
-        // Set the auth token for the session
-        const { data: authData, error: authError } = await supabase.auth.setSession({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token
+        // Fetch data from backend API instead of direct Supabase queries
+        const response = await fetch('http://localhost:5001/api/admin/dashboard', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
         });
 
-        if (authError) {
-          throw new Error(`Auth error: ${authError.message}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        // Use Promise.allSettled to prevent one failure from blocking others
-        const [studentsRes, coursesRes, facultyRes, feesRes] = await Promise.allSettled([
-          supabase.from('students').select('*', { count: 'exact', head: true }),
-          supabase.from('courses').select('*', { count: 'exact', head: true }),
-          supabase.from('faculty').select('*', { count: 'exact', head: true }),
-          supabase.from('fees').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-        ]);
+        const data = await response.json();
 
-        // Helper function to safely extract count from response
-        const getCount = (result) => {
-          if (result.status !== 'fulfilled') {
-            console.error('Request failed:', result.reason);
-            return 0;
-          }
-          if (result.value.error) {
-            console.error('Supabase error:', result.value.error);
-            return 0;
-          }
-          return result.value.count || 0;
-        };
+        if (data.success && data.data) {
+          const statsData = {
+            totalStudents: data.data.students?.total || 0,
+            activeCourses: data.data.courses?.total || 0,
+            totalFaculty: data.data.faculty?.total || 0,
+            pendingFees: data.data.admissions?.pending || 0,
+          };
 
-        const statsData = {
-          totalStudents: getCount(studentsRes),
-          activeCourses: getCount(coursesRes),
-          totalFaculty: getCount(facultyRes),
-          pendingFees: getCount(feesRes),
-        };
-
-        console.log('Dashboard data fetched:', statsData);
-        setStats(statsData);
+          console.log('Dashboard data fetched:', statsData);
+          setStats(statsData);
+        } else {
+          throw new Error(data.error || 'Failed to fetch dashboard data');
+        }
 
       } catch (err) {
         console.error('Error in fetchDashboardData:', err);
@@ -89,6 +77,15 @@ const AdminOverview = () => {
 
     fetchDashboardData();
   }, [session, isAuthenticated]);
+
+  // Handle auth loading state
+  if (authLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   // Handle unauthenticated state
   if (!isAuthenticated || !session) {
@@ -122,18 +119,20 @@ const AdminOverview = () => {
     );
   }
 
+  // Show dashboard even if there was an error (with default data)
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
       <Typography variant="h4" component="h1" gutterBottom>
         Welcome, {user?.full_name || user?.email?.split('@')[0] || 'Admin'}
       </Typography>
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-          <CircularProgress size={30} />
-        </Box>
-      ) : (
-        <Grid container spacing={3}>
+      {error && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Showing default data. Some features may not be available due to database connectivity issues.
+        </Alert>
+      )}
+
+      <Grid container spacing={3}>
           <Grid item xs={12} sm={6} md={3}>
             <Paper sx={{ p: 2, textAlign: 'center', minHeight: 120, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <Typography variant="h6" color="text.secondary">Total Students</Typography>
@@ -179,7 +178,6 @@ const AdminOverview = () => {
             </Paper>
           </Grid>
         </Grid>
-      )}
     </Box>
   );
 };

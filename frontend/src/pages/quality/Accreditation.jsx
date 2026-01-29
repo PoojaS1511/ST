@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
+import { getAuthHeaders } from '../../utils/auth';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, LineChart, Line } from 'recharts';
 import { Award, TrendingUp, FileText, Plus, Download, CheckCircle, AlertTriangle, Star, Target } from 'lucide-react';
 
@@ -27,9 +28,9 @@ const Accreditation = () => {
 
   const fetchReadinessScore = async () => {
     try {
-      const response = await fetch('/api/quality/accreditation/readiness', {
+      const response = await fetch(`${API_URL}/api/quality/accreditation/readiness`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json'
         }
       });
       const data = await response.json();
@@ -53,9 +54,9 @@ const Accreditation = () => {
         ...(filterStatus && { status: filterStatus })
       });
 
-      const response = await fetch(`/api/quality/accreditation/reports?${params}`, {
+      const response = await fetch(`${API_URL}/api/quality/accreditation/reports?${params}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json'
         }
       });
       const data = await response.json();
@@ -71,9 +72,9 @@ const Accreditation = () => {
 
   const fetchAccreditationAnalytics = async () => {
     try {
-      const response = await fetch('/api/quality/accreditation/analytics', {
+      const response = await fetch(`${API_URL}/api/quality/accreditation/analytics`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json'
         }
       });
       const data = await response.json();
@@ -89,11 +90,10 @@ const Accreditation = () => {
   const handleGenerateReport = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/quality/accreditation/reports', {
+      const response = await fetch(`${API_URL}/api/quality/accreditation/reports`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(formData)
       });

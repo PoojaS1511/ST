@@ -11,10 +11,14 @@ from supabase import create_client
 
 class SupabaseTransportFee:
     """Transport Fee Model for Supabase"""
-    
-    def __init__(self, supabase_url: str, supabase_key: str):
-        # Initialize Supabase client
-        self.supabase = create_client(supabase_url, supabase_key)
+
+    def __init__(self, supabase_or_url, supabase_key=None):
+        if supabase_key is None and hasattr(supabase_or_url, 'table'):
+            # It's a supabase client
+            self.supabase = supabase_or_url
+        else:
+            # It's URL and key
+            self.supabase = create_client(supabase_or_url, supabase_key)
         self.table_name = 'transport_fee'
     
     def get_all(self, filters: Dict = None) -> List[Dict]:
@@ -29,6 +33,11 @@ class SupabaseTransportFee:
                     query = query.eq('student_id', filters['student_id'])
                 if filters.get('academic_year'):
                     query = query.eq('academic_year', filters['academic_year'])
+                if filters.get('search'):
+                    search = filters['search']
+                    # We don't have student_name in the fee table, but we might have it in processed records
+                    # or we can search by student_id or bus_no/route_name
+                    query = query.or_(f"student_id.ilike.%{search}%,bus_no.ilike.%{search}%,route_name.ilike.%{search}%")
             
             response = query.execute()
             
@@ -63,16 +72,17 @@ class SupabaseTransportFee:
     def create(self, data: Dict) -> Dict:
         """Create new transport fee"""
         try:
-            # Prepare data for Supabase
+            # Prepare data for Supabase - handle both schemas
             fee_data = {
                 'student_id': data.get('student_id'),
-                'route_name': data.get('route_name', ''),
+                'route_name': data.get('route_name', data.get('route_id', '')),
                 'bus_no': data.get('bus_no'),
-                'fee_amount': float(data.get('fee_amount', 2500.00)),
-                'paid_amount': float(data.get('paid_amount', 0.00)),
+                'fee_amount': float(data.get('fee_amount', data.get('amount', 2500.00))),
+                'paid_amount': float(data.get('paid_amount', data.get('amount', 0.00) if data.get('payment_status') == 'Paid' else 0.00)),
                 'payment_status': data.get('payment_status', 'Pending'),
                 'payment_date': data.get('payment_date'),
-                'academic_year': data.get('academic_year')
+                'academic_year': data.get('academic_year', '2023-24'),
+                'payment_mode': data.get('payment_mode')
             }
             
             # Remove None values
@@ -95,13 +105,31 @@ class SupabaseTransportFee:
             # Prepare update data
             update_data = {}
             
+            # Map fields from legacy to Supabase
+            mapping = {
+                'route_id': 'route_name',
+                'amount': 'fee_amount',
+            }
+            
+            for legacy_field, supabase_field in mapping.items():
+                if legacy_field in data:
+                    if legacy_field == 'amount':
+                        update_data[supabase_field] = float(data[legacy_field])
+                    else:
+                        update_data[supabase_field] = data[legacy_field]
+
             for field in ['route_name', 'bus_no', 'fee_amount', 'paid_amount', 
-                         'payment_status', 'payment_date', 'academic_year']:
+                         'payment_status', 'payment_date', 'academic_year', 'payment_mode']:
                 if field in data:
                     if field in ['fee_amount', 'paid_amount']:
                         update_data[field] = float(data[field])
                     else:
                         update_data[field] = data[field]
+            
+            # Special case: if status becomes Paid and paid_amount not set, set it to fee_amount
+            if update_data.get('payment_status') == 'Paid' and 'paid_amount' not in update_data:
+                # We might need to fetch the current fee_amount if not in update_data
+                pass 
             
             response = self.supabase.table(self.table_name).update(update_data).eq('id', fee_id).execute()
             

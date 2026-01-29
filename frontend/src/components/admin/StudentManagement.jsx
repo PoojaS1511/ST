@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  fetchStudents, 
+import {
+  fetchStudents,
   searchStudents,
-  getStudentStatistics, 
-  deleteStudent, 
-  addStudent, 
-  updateStudent, 
+  getStudentStatistics,
+  deleteStudent,
+  addStudent,
+  updateStudent,
   softDeleteStudent
 } from '../../services/studentService';
 import AddStudentForm from './AddStudentForm';
@@ -14,13 +14,13 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import ConfirmDialog from '../common/ConfirmDialog';
 import Pagination from '../common/Pagination';
 import {
-  UserIcon, 
-  ChartBarIcon, 
-  FunnelIcon, 
-  MagnifyingGlassIcon, 
-  PlusIcon, 
-  PencilIcon, 
-  TrashIcon, 
+  UserIcon,
+  ChartBarIcon,
+  FunnelIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
   EyeIcon,
   ArrowPathIcon,
   UserGroupIcon,
@@ -28,7 +28,7 @@ import {
   DocumentArrowDownIcon,
   UserPlusIcon
 } from '@heroicons/react/24/outline';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 
 // Constants
 const ITEMS_PER_PAGE = 10;

@@ -17,19 +17,24 @@ const AttendanceManagement = () => {
   const loadAttendance = async () => {
     try {
       setLoading(true);
+      setError(null);
       const result = await TransportService.getAttendance({ date: filterDate });
       if (!result.success) throw new Error(result.error);
-      setAttendance(result.data);
+      setAttendance(Array.isArray(result.data) ? result.data : []);
     } catch (err) {
+      console.error('Error loading attendance:', err);
       setError(err.message);
+      setAttendance([]);
     } finally {
       setLoading(false);
     }
   };
 
   const filteredAttendance = attendance.filter(record => {
-    const matchesSearch = record.entity_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         record.entity_id.toLowerCase().includes(searchTerm.toLowerCase());
+    const name = record.entity_name || '';
+    const id = record.entity_id || '';
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         id.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'All' || record.entity_type === filterType;
     return matchesSearch && matchesType;
   });
@@ -114,24 +119,39 @@ const AttendanceManagement = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredAttendance.map((record) => (
-                <TableRow key={record.id} hover>
-                  <TableCell>{TransportService.formatDate(record.date)}</TableCell>
-                  <TableCell>
-                    <Chip label={record.entity_type} size="small" variant="outlined"
-                      color={record.entity_type === 'Student' ? 'primary' : 'secondary'} />
+              {filteredAttendance.length > 0 ? (
+                filteredAttendance.map((record) => (
+                  <TableRow key={record.id} hover>
+                    <TableCell>{TransportService.formatDate(record.date)}</TableCell>
+                    <TableCell>
+                      <Chip label={record.entity_type} size="small" variant="outlined"
+                        color={record.entity_type === 'Student' ? 'primary' : 'secondary'} />
+                    </TableCell>
+                    <TableCell>{record.entity_id}</TableCell>
+                    <TableCell className="font-medium">{record.entity_name}</TableCell>
+                    <TableCell>{record.route_id}</TableCell>
+                    <TableCell>{record.bus_number}</TableCell>
+                    <TableCell>
+                      <Chip label={record.status}
+                        color={record.status === 'Present' ? 'success' : 'error'} size="small" />
+                    </TableCell>
+                    <TableCell><Typography variant="body2" color="text.secondary">{record.remarks || '-'}</Typography></TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={8} align="center" className="py-10">
+                    <Typography variant="body1" color="text.secondary">
+                      No attendance records found for {TransportService.formatDate(filterDate)}
+                    </Typography>
+                    {searchTerm && (
+                      <Typography variant="body2" color="text.secondary">
+                        Try adjusting your search for "{searchTerm}"
+                      </Typography>
+                    )}
                   </TableCell>
-                  <TableCell>{record.entity_id}</TableCell>
-                  <TableCell className="font-medium">{record.entity_name}</TableCell>
-                  <TableCell>{record.route_id}</TableCell>
-                  <TableCell>{record.bus_number}</TableCell>
-                  <TableCell>
-                    <Chip label={record.status}
-                      color={record.status === 'Present' ? 'success' : 'error'} size="small" />
-                  </TableCell>
-                  <TableCell><Typography variant="body2" color="text.secondary">{record.remarks || '-'}</Typography></TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </TableContainer>

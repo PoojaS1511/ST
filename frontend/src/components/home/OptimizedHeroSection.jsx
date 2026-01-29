@@ -96,7 +96,7 @@ const OptimizedImage = React.memo(({ image, priority = false, onLoad }) => {
           className={`w-full h-full object-cover transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}
           loading={priority ? 'eager' : 'eager'} // Changed to eager to prevent lazy loading
           decoding="async"
-          fetchPriority={priority ? 'high' : 'auto'}
+          fetchpriority={priority ? 'high' : 'auto'}
           onLoad={handleLoad}
         />
       </picture>

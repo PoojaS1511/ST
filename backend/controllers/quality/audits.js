@@ -6,13 +6,15 @@ exports.getAllAudits = async (req, res) => {
     const { page = 1, limit = 10, department, status, audit_type } = req.query;
     
     let query = supabase
-      .from('audits')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false });
+      .from('quality_audits')
+      .select('*', { count: 'exact' });
 
-    if (department) query = query.eq('department', department);
-    if (status) query = query.eq('status', status);
-    if (audit_type) query = query.eq('audit_type', audit_type);
+    if (department && department !== 'All Departments') {
+      query = query.eq('department', department);
+    }
+    if (status) {
+      query = query.eq('status', status);
+    }
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
@@ -42,16 +44,9 @@ exports.getAllAudits = async (req, res) => {
 
 exports.createAudit = async (req, res) => {
   try {
-    const auditData = {
-      ...req.body,
-      status: 'pending',
-      findings: req.body.findings || '',
-      recommendations: req.body.recommendations || ''
-    };
-
     const { data, error } = await supabase
-      .from('audits')
-      .insert([auditData])
+      .from('quality_audits')
+      .insert([req.body])
       .select();
 
     if (error) throw error;
@@ -73,21 +68,13 @@ exports.createAudit = async (req, res) => {
 exports.updateAudit = async (req, res) => {
   try {
     const { id } = req.params;
-    
     const { data, error } = await supabase
-      .from('audits')
+      .from('quality_audits')
       .update(req.body)
-      .eq('id', id)
+      .eq('audit_id', id)
       .select();
 
     if (error) throw error;
-
-    if (!data || data.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Audit not found'
-      });
-    }
 
     res.json({
       success: true,
@@ -106,11 +93,10 @@ exports.updateAudit = async (req, res) => {
 exports.deleteAudit = async (req, res) => {
   try {
     const { id } = req.params;
-    
     const { error } = await supabase
-      .from('audits')
+      .from('quality_audits')
       .delete()
-      .eq('id', id);
+      .eq('audit_id', id);
 
     if (error) throw error;
 
@@ -132,11 +118,11 @@ exports.getOverdueAudits = async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     
     const { data, error } = await supabase
-      .from('audits')
+      .from('quality_audits')
       .select('*')
-      .lt('scheduled_date', today)
-      .in('status', ['pending', 'in_progress'])
-      .order('scheduled_date', { ascending: true });
+      .lt('audit_date', today)
+      .in('status', ['Pending', 'In Progress'])
+      .order('audit_date', { ascending: true });
 
     if (error) throw error;
 
@@ -155,7 +141,7 @@ exports.getOverdueAudits = async (req, res) => {
 
 exports.getAuditAnalytics = async (req, res) => {
   try {
-    // Completion trends
+    // Completion trends (mock)
     const completionTrends = [
       { month: 'Jan', rate: 60 },
       { month: 'Feb', rate: 65 },
@@ -165,22 +151,23 @@ exports.getAuditAnalytics = async (req, res) => {
       { month: 'Jun', rate: 85 }
     ];
 
-    // Department compliance scores
-    const { data: departmentData } = await supabase
-      .from('audits')
-      .select('department, compliance_score')
-      .not('compliance_score', 'is', null);
+    const { data: allAudits, error } = await supabase
+      .from('quality_audits')
+      .select('*');
 
-    const complianceScores = departmentData ? 
-      departmentData.reduce((acc, audit) => {
+    if (error) throw error;
+
+    // Department compliance scores
+    const complianceScores = allAudits ? 
+      allAudits.reduce((acc, audit) => {
         const dept = acc.find(item => item.department === audit.department);
         if (dept) {
-          dept.total += audit.compliance_score;
+          dept.total += (audit.compliance_score || 0);
           dept.count += 1;
         } else {
           acc.push({
             department: audit.department,
-            total: audit.compliance_score,
+            total: (audit.compliance_score || 0),
             count: 1
           });
         }
@@ -191,12 +178,8 @@ exports.getAuditAnalytics = async (req, res) => {
       })) : [];
 
     // Status distribution
-    const { data: statusData } = await supabase
-      .from('audits')
-      .select('status');
-
-    const statusDistribution = statusData ? 
-      statusData.reduce((acc, audit) => {
+    const statusDistribution = allAudits ? 
+      allAudits.reduce((acc, audit) => {
         const status = acc.find(item => item.status === audit.status);
         if (status) {
           status.count += 1;

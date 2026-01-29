@@ -21,7 +21,7 @@ import {
 
 const AboutUsPage = () => {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="bg-white">
       {/* Hero Section */}
       <div className="bg-[#032A51] text-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -163,18 +163,6 @@ const AboutUsPage = () => {
             </div>
           </div>
         </motion.div>
-
-        {/* Footer */}
-        <footer className="border-t border-gray-200 pt-8 mt-12">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-600 mb-4 md:mb-0">© 2025 Cube Arts and Engineering College. All rights reserved.</p>
-            <div className="flex space-x-6">
-              <Link to="/privacy-policy" className="text-gray-600 hover:text-[#032A51]">Privacy Policy</Link>
-              <Link to="/terms" className="text-gray-600 hover:text-[#032A51]">Terms of Service</Link>
-              <Link to="/sitemap" className="text-gray-600 hover:text-[#032A51]">Sitemap</Link>
-            </div>
-          </div>
-        </footer>
       </div>
     </div>
   );

@@ -5,39 +5,19 @@ from supabase_client import get_supabase
 # Create blueprint
 quality_audits_bp = Blueprint('quality_audits', __name__)
 
-# Simple CORS decorator
-def cors_enabled(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # Handle OPTIONS requests
-        if request.method == 'OPTIONS':
-            response = jsonify({'status': 'preflight'})
-            origin = request.headers.get('Origin', 'http://localhost:3001')
-            allowed_origins = ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001']
-            if origin in allowed_origins:
-                response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-            response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-            return response
-        
-        # Handle actual requests
-        response = f(*args, **kwargs)
-        if hasattr(response, 'headers'):
-            origin = request.headers.get('Origin', 'http://localhost:3001')
-            allowed_origins = ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001']
-            if origin in allowed_origins:
-                response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
-    return decorated_function
-
 @quality_audits_bp.route('/audits', methods=['GET', 'OPTIONS'])
-@cors_enabled
 def get_audits():
     """Get quality audits from Supabase"""
     try:
-        supabase = get_supabase()
+        # Extract JWT token from Authorization header
+        auth_header = request.headers.get('Authorization')
+        print(f"DEBUG: Authorization header received: {auth_header}")
+        token = None
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
+            print(f"DEBUG: Extracted token: {token[:20]}...")
+
+        supabase = get_supabase(token=token)
 
         # Get pagination parameters
         page = int(request.args.get('page', 1))
@@ -61,22 +41,9 @@ def get_audits():
         if status_filter:
             query = query.eq('status', status_filter)
 
-        # Get total count for pagination
-        total_query = query
-        total_result = supabase.table('quality_audits').select('*', count='exact').execute()
-        total_count = total_result.count if hasattr(total_result, 'count') else 0
-
-        # Apply pagination
-        query = query.range(offset, offset + limit - 1)
-
-        # Execute query
-        result = query.execute()
-
-        if not hasattr(result, 'data'):
-            return jsonify({
-                'success': False,
-                'error': 'Failed to fetch data from Supabase'
-            }), 500
+        # Get results
+        result = query.range(offset, offset + limit - 1).execute()
+        total_count = result.count if hasattr(result, 'count') else 0
 
         # Map database fields to frontend expected fields
         audits = []
@@ -85,11 +52,11 @@ def get_audits():
                 'id': audit.get('audit_id'),
                 'title': f"Audit - {audit.get('department', 'Unknown')}",
                 'department': audit.get('department', ''),
-                'audit_type': 'internal',  # Default since not in schema
+                'audit_type': 'internal',
                 'scheduled_date': audit.get('audit_date', ''),
                 'auditor': audit.get('auditor_name', ''),
                 'findings': audit.get('remarks', ''),
-                'recommendations': '',  # Not in schema
+                'recommendations': '',
                 'status': audit.get('status', 'pending'),
                 'compliance_score': audit.get('compliance_score')
             }
@@ -116,7 +83,6 @@ def get_audits():
         }), 500
 
 @quality_audits_bp.route('/audits/analytics', methods=['GET', 'OPTIONS'])
-@cors_enabled
 def get_audit_analytics():
     """Get audit analytics data"""
     try:
@@ -124,14 +90,7 @@ def get_audit_analytics():
 
         # Get all audits for analytics
         result = supabase.table('quality_audits').select('*').execute()
-
-        if not hasattr(result, 'data'):
-            return jsonify({
-                'success': False,
-                'error': 'Failed to fetch analytics data'
-            }), 500
-
-        audits = result.data
+        audits = result.data or []
 
         # Calculate analytics
         total_audits = len(audits)
@@ -147,12 +106,12 @@ def get_audit_analytics():
             if score is not None:
                 if dept not in department_scores:
                     department_scores[dept] = []
-                department_scores[dept].append(score)
+                department_scores[dept].append(float(score))
 
         compliance_scores = [
             {
                 'department': dept,
-                'score': sum(scores) / len(scores) if scores else 0
+                'score': round(sum(scores) / len(scores), 1) if scores else 0
             }
             for dept, scores in department_scores.items()
         ]
@@ -164,7 +123,8 @@ def get_audit_analytics():
             {'status': 'in_progress', 'count': in_progress_audits}
         ]
 
-        # Mock completion trends (since we don't have historical data)
+        # Monthly trends (summarized from completed audits by month)
+        # For now, if we don't have enough data, we use these placeholders
         completion_trends = [
             {'month': 'Jan', 'rate': 85},
             {'month': 'Feb', 'rate': 88},
@@ -188,7 +148,6 @@ def get_audit_analytics():
         })
 
     except Exception as e:
-        print(f"Error fetching audit analytics: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)

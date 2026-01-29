@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Card, CardContent, Typography, Button, TextField, Dialog, DialogTitle,
   DialogContent, DialogActions, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper, IconButton, Chip, MenuItem, CircularProgress, Alert, Grid
+  TableHead, TableRow, Paper, IconButton, Chip, MenuItem, CircularProgress, Alert, Grid, TablePagination
 } from '@mui/material';
-import { Search, DollarSign, Download, X } from 'lucide-react';
+import { Search, DollarSign, Download, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import TransportService from '../../services/transportService';
 
 const FeesManagement = () => {
@@ -13,23 +13,67 @@ const FeesManagement = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [pagination, setPagination] = useState({
+    page: 0,
+    rowsPerPage: 10,
+    total: 0
+  });
+  const [summary, setSummary] = useState({
+    total_amount: 0,
+    collected_amount: 0,
+    pending_amount: 0,
+    overdue_amount: 0
+  });
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedFee, setSelectedFee] = useState(null);
   const [paymentData, setPaymentData] = useState({ payment_mode: 'Online', payment_date: '', remarks: '' });
 
-  useEffect(() => { loadFees(); }, []);
+  useEffect(() => { loadFees(); }, [pagination.page, pagination.rowsPerPage, filterStatus, searchTerm]);
 
   const loadFees = async () => {
     try {
       setLoading(true);
-      const result = await TransportService.getTransportFees();
+      const params = {
+        page: pagination.page + 1,
+        limit: pagination.rowsPerPage
+      };
+
+      if (filterStatus !== 'All') {
+        params.payment_status = filterStatus;
+      }
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+
+      const result = await TransportService.getTransportFees(params);
       if (!result.success) throw new Error(result.error);
+      
       setFees(result.data);
+      setPagination(prev => ({
+        ...prev,
+        total: result.total || 0
+      }));
+      if (result.summary) {
+        setSummary(result.summary);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setPagination(prev => ({
+      ...prev,
+      rowsPerPage: parseInt(event.target.value, 10),
+      page: 0
+    }));
   };
 
   const handlePayment = (fee) => {
@@ -40,20 +84,19 @@ const FeesManagement = () => {
 
   const handleSubmitPayment = async () => {
     try {
-      await TransportService.recordPayment({ ...paymentData, fee_id: selectedFee.id });
+      await TransportService.recordPayment({
+        ...paymentData,
+        fee_id: selectedFee.id,
+        student_id: selectedFee.student_id,
+        student_name: selectedFee.student_name,
+        amount: selectedFee.amount
+      });
       setOpenDialog(false);
       loadFees();
     } catch (err) {
       setError(err.message);
     }
   };
-
-  const filteredFees = fees.filter(fee => {
-    const matchesSearch = fee.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         fee.student_id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'All' || fee.payment_status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -64,14 +107,7 @@ const FeesManagement = () => {
     }
   };
 
-  const stats = {
-    total: fees.reduce((sum, f) => sum + f.amount, 0),
-    collected: fees.filter(f => f.payment_status === 'Paid').reduce((sum, f) => sum + f.amount, 0),
-    pending: fees.filter(f => f.payment_status === 'Pending').reduce((sum, f) => sum + f.amount, 0),
-    overdue: fees.filter(f => f.payment_status === 'Overdue').reduce((sum, f) => sum + f.amount, 0),
-  };
-
-  if (loading) {
+  if (loading && fees.length === 0) {
     return <Box className="flex items-center justify-center min-h-screen"><CircularProgress /></Box>;
   }
 
@@ -95,7 +131,7 @@ const FeesManagement = () => {
             <Box className="flex items-center justify-between">
               <Box>
                 <Typography color="text.secondary" variant="body2">Total Amount</Typography>
-                <Typography variant="h5" className="font-bold">{TransportService.formatCurrency(stats.total)}</Typography>
+                <Typography variant="h5" className="font-bold">{TransportService.formatCurrency(summary.total_amount)}</Typography>
               </Box>
               <DollarSign size={32} className="text-blue-600" />
             </Box>
@@ -104,21 +140,21 @@ const FeesManagement = () => {
         <Grid item xs={12} sm={6} md={3}>
           <Card><CardContent>
             <Box><Typography color="text.secondary" variant="body2">Collected</Typography>
-              <Typography variant="h5" className="font-bold text-green-600">{TransportService.formatCurrency(stats.collected)}</Typography>
+              <Typography variant="h5" className="font-bold text-green-600">{TransportService.formatCurrency(summary.collected_amount)}</Typography>
             </Box>
           </CardContent></Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Card><CardContent>
             <Box><Typography color="text.secondary" variant="body2">Pending</Typography>
-              <Typography variant="h5" className="font-bold text-orange-600">{TransportService.formatCurrency(stats.pending)}</Typography>
+              <Typography variant="h5" className="font-bold text-orange-600">{TransportService.formatCurrency(summary.pending_amount)}</Typography>
             </Box>
           </CardContent></Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Card><CardContent>
             <Box><Typography color="text.secondary" variant="body2">Overdue</Typography>
-              <Typography variant="h5" className="font-bold text-red-600">{TransportService.formatCurrency(stats.overdue)}</Typography>
+              <Typography variant="h5" className="font-bold text-red-600">{TransportService.formatCurrency(summary.overdue_amount || 0)}</Typography>
             </Box>
           </CardContent></Card>
         </Grid>
@@ -126,11 +162,17 @@ const FeesManagement = () => {
 
       <Card><CardContent>
         <Box className="flex gap-4">
-          <TextField placeholder="Search fees..." value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+          <TextField placeholder="Search fees by student ID, bus, or route..." value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPagination(prev => ({ ...prev, page: 0 }));
+            }}
             InputProps={{ startAdornment: <Search size={20} className="mr-2 text-gray-400" /> }}
             className="flex-1" size="small" />
-          <TextField select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
+          <TextField select value={filterStatus} onChange={(e) => {
+              setFilterStatus(e.target.value);
+              setPagination(prev => ({ ...prev, page: 0 }));
+            }}
             size="small" className="w-40">
             <MenuItem value="All">All Status</MenuItem>
             <MenuItem value="Paid">Paid</MenuItem>
@@ -157,7 +199,7 @@ const FeesManagement = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredFees.map((fee) => (
+              {fees.map((fee) => (
                 <TableRow key={fee.id} hover>
                   <TableCell>{fee.student_id}</TableCell>
                   <TableCell>{fee.student_name}</TableCell>
@@ -179,9 +221,25 @@ const FeesManagement = () => {
                   </TableCell>
                 </TableRow>
               ))}
+              {fees.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={9} align="center" className="py-8">
+                    <Typography color="text.secondary">No fee records found</Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          component="div"
+          count={pagination.total}
+          rowsPerPage={pagination.rowsPerPage}
+          page={pagination.page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
       </Card>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>

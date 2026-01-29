@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Users, Plus, Edit, Trash2, Search, Filter, TrendingUp, BookOpen, Star } from 'lucide-react';
 import { API_URL } from '../../config';
+import { getAuthHeaders } from '../../utils/auth';
 
 const Faculty = () => {
   const [faculty, setFaculty] = useState([]);
@@ -10,22 +11,16 @@ const Faculty = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterDepartment, setFilterDepartment] = useState('');
+  const [filterDepartment, setFilterDepartment] = useState('All Departments');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   const [formData, setFormData] = useState({
-    employee_id: '',
-    name: '',
-    email: '',
+    faculty_name: '',
     department: '',
-    designation: '',
     performance_rating: 0,
-    research_output: 0,
-    student_feedback_score: 0,
-    teaching_hours: 0,
-    publications: 0,
-    projects: 0
+    research_papers: 0,
+    feedback_score: 0
   });
 
   useEffect(() => {
@@ -40,22 +35,31 @@ const Faculty = () => {
         page: currentPage,
         limit: 10,
         ...(searchTerm && { search: searchTerm }),
-        ...(filterDepartment && { department: filterDepartment })
+        ...(filterDepartment && filterDepartment !== 'All Departments' && { department: filterDepartment })
       });
 
-      const response = await fetch(`${API_URL}/quality/faculty?${params}`, {
+      console.log('Fetching faculty with params:', params.toString());
+      const response = await fetch(`${API_URL}/api/quality/faculty?${params}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json'
         }
       });
-      const data = await response.json();
 
-      if (data.success) {
+      console.log('API Response status:', response.status);
+      const data = await response.json();
+      console.log('API Response data:', data);
+
+      if (data.success && data.data) {
+        console.log('Setting faculty data:', data.data);
         setFaculty(data.data);
-        setTotalPages(data.pagination.totalPages);
+        setTotalPages(data.pagination?.totalPages || 1);
+      } else {
+        console.error('API returned error:', data);
+        setFaculty([]);
       }
     } catch (error) {
       console.error('Error fetching faculty:', error);
+      setFaculty([]);
     } finally {
       setLoading(false);
     }
@@ -63,9 +67,9 @@ const Faculty = () => {
 
   const fetchFacultyAnalytics = async () => {
     try {
-      const response = await fetch(`${API_URL}/quality/faculty/analytics`, {
+      const response = await fetch(`${API_URL}/api/quality/faculty/analytics`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json'
         }
       });
       const data = await response.json();
@@ -81,19 +85,27 @@ const Faculty = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const url = editingFaculty 
-        ? `/api/quality/faculty/${editingFaculty.id}`
-        : '/api/quality/faculty';
-      
+      const url = editingFaculty
+        ? `${API_URL}/api/quality/faculty/${editingFaculty.id || editingFaculty.faculty_id}`
+        : `${API_URL}/api/quality/faculty`;
+
       const method = editingFaculty ? 'PUT' : 'POST';
+
+      // Map form data to API expected format
+      const apiData = {
+        name: formData.faculty_name,
+        department: formData.department,
+        performance_rating: formData.performance_rating,
+        research_output: formData.research_papers,
+        student_feedback_score: formData.feedback_score
+      };
 
       const response = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(apiData)
       });
 
       const data = await response.json();
@@ -102,17 +114,11 @@ const Faculty = () => {
         setShowAddModal(false);
         setEditingFaculty(null);
         setFormData({
-          employee_id: '',
-          name: '',
-          email: '',
+          faculty_name: '',
           department: '',
-          designation: '',
           performance_rating: 0,
-          research_output: 0,
-          student_feedback_score: 0,
-          teaching_hours: 0,
-          publications: 0,
-          projects: 0
+          research_papers: 0,
+          feedback_score: 0
         });
         fetchFaculty();
       }
@@ -123,17 +129,23 @@ const Faculty = () => {
 
   const handleEdit = (facultyMember) => {
     setEditingFaculty(facultyMember);
-    setFormData(facultyMember);
+    setFormData({
+      faculty_name: facultyMember.name || facultyMember.faculty_name,
+      department: facultyMember.department,
+      performance_rating: facultyMember.performance_rating || 0,
+      research_papers: facultyMember.research_output || facultyMember.research_papers || facultyMember.publications || 0,
+      feedback_score: facultyMember.student_feedback_score || facultyMember.feedback_score || 0
+    });
     setShowAddModal(true);
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this faculty member?')) {
       try {
-        const response = await fetch(`${API_URL}/quality/faculty/${id}`, {
+        const response = await fetch(`${API_URL}/api/quality/faculty/${id}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Content-Type': 'application/json'
           }
         });
 
@@ -148,7 +160,7 @@ const Faculty = () => {
     }
   };
 
-  const departments = [...new Set(faculty.map(f => f.department))];
+  const departments = faculty.length > 0 ? [...new Set(faculty.map(f => f.department).filter(Boolean))] : [];
 
   if (loading && faculty.length === 0) {
     return (
@@ -236,7 +248,7 @@ const Faculty = () => {
             ))}
           </select>
           <div className="text-sm text-gray-600 flex items-center">
-            Showing {faculty.length} faculty members
+            Showing {faculty.length} faculty members (Total: {totalPages * 10})
           </div>
         </div>
       </div>
@@ -272,13 +284,13 @@ const Faculty = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {faculty.map((member) => (
-                <tr key={member.id} className="hover:bg-gray-50">
+                <tr key={member.id || member.faculty_id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {member.employee_id}
+                    {member.employee_id || member.faculty_id || member.id}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{member.name}</div>
-                    <div className="text-sm text-gray-500">{member.email}</div>
+                    <div className="text-sm font-medium text-gray-900">{member.name || member.faculty_name || 'N/A'}</div>
+                    <div className="text-sm text-gray-500">{(member.name || member.faculty_name || '').toLowerCase().replace(' ', '.')}@college.edu</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {member.department}
@@ -286,12 +298,12 @@ const Faculty = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <span className={`text-sm font-medium ${
-                        member.performance_rating >= 80 ? 'text-green-600' : 
-                        member.performance_rating >= 60 ? 'text-yellow-600' : 'text-red-600'
+                        (member.performance_rating || 0) >= 80 ? 'text-green-600' :
+                        (member.performance_rating || 0) >= 60 ? 'text-yellow-600' : 'text-red-600'
                       }`}>
-                        {member.performance_rating}%
+                        {member.performance_rating || 0}%
                       </span>
-                      {member.performance_rating >= 80 && (
+                      {(member.performance_rating || 0) >= 80 && (
                         <TrendingUp className="w-4 h-4 text-green-500 ml-2" />
                       )}
                     </div>
@@ -299,17 +311,17 @@ const Faculty = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="flex items-center">
                       <BookOpen className="w-4 h-4 text-gray-400 mr-2" />
-                      {member.research_output}
+                      {member.research_output || member.research_papers || member.publications || 0}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <Star className="w-4 h-4 text-yellow-400 mr-2" />
                       <span className={`text-sm font-medium ${
-                        member.student_feedback_score >= 80 ? 'text-green-600' : 
-                        member.student_feedback_score >= 60 ? 'text-yellow-600' : 'text-red-600'
+                        (member.student_feedback_score || member.feedback_score || 0) >= 4 ? 'text-green-600' :
+                        (member.student_feedback_score || member.feedback_score || 0) >= 3 ? 'text-yellow-600' : 'text-red-600'
                       }`}>
-                        {member.student_feedback_score}%
+                        {member.student_feedback_score || member.feedback_score || 0}{(member.student_feedback_score || member.feedback_score || 0) <= 5 ? '/5' : '%'}
                       </span>
                     </div>
                   </td>
@@ -322,7 +334,7 @@ const Faculty = () => {
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(member.id)}
+                        onClick={() => handleDelete(member.id || member.faculty_id)}
                         className="text-red-600 hover:text-red-900"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -394,32 +406,12 @@ const Faculty = () => {
               </h3>
               <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Employee ID</label>
+                  <label className="block text-sm font-medium text-gray-700">Faculty Name</label>
                   <input
                     type="text"
                     required
-                    value={formData.employee_id}
-                    onChange={(e) => setFormData({...formData, employee_id: e.target.value})}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    value={formData.faculty_name}
+                    onChange={(e) => setFormData({...formData, faculty_name: e.target.value})}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -434,12 +426,37 @@ const Faculty = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Designation</label>
+                  <label className="block text-sm font-medium text-gray-700">Performance Rating</label>
                   <input
-                    type="text"
+                    type="number"
+                    min="0"
+                    max="100"
                     required
-                    value={formData.designation}
-                    onChange={(e) => setFormData({...formData, designation: e.target.value})}
+                    value={formData.performance_rating}
+                    onChange={(e) => setFormData({...formData, performance_rating: parseFloat(e.target.value)})}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Research Papers</label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={formData.research_papers}
+                    onChange={(e) => setFormData({...formData, research_papers: parseInt(e.target.value)})}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Feedback Score</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    required
+                    value={formData.feedback_score}
+                    onChange={(e) => setFormData({...formData, feedback_score: parseFloat(e.target.value)})}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>

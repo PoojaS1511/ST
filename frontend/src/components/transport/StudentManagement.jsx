@@ -21,7 +21,8 @@ import {
   Chip,
   MenuItem,
   CircularProgress,
-  Alert
+  Alert,
+  TablePagination
 } from '@mui/material';
 import { Search, Plus, Edit, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import TransportService from '../../services/transportService';
@@ -96,16 +97,15 @@ const StudentManagement = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 25,
-    total: 0,
-    pages: 0
+    page: 0,
+    rowsPerPage: 10,
+    total: 0
   });
   const [formData, setFormData] = useState({
-    full_name: '',
+    name: '',
     email: '',
     phone: '',
-    register_number: '',
+    student_id: '',
     gender: '',
     department_id: '',
     course_id: '',
@@ -118,61 +118,75 @@ const StudentManagement = () => {
     current_semester: '',
     father_name: '',
     mother_name: '',
+    address: '',
+    route_id: '',
+    route_name: '',
+    pickup_point: '',
+    fee_status: 'Pending',
     status: 'active',
   });
 
   useEffect(() => {
     loadStudents();
-  }, [pagination.page, pagination.limit, filterStatus]);
+  }, [pagination.page, pagination.rowsPerPage, filterStatus, searchTerm]);
 
   const loadStudents = async () => {
     try {
       setLoading(true);
       const params = {
-        page: pagination.page,
-        limit: pagination.limit
+        page: pagination.page + 1,
+        limit: pagination.rowsPerPage
       };
       
       // Add filters if present
       if (filterStatus !== 'All') {
         params.status = filterStatus;
       }
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
       
-      console.log('🔍 Loading students with params:', params); // Debug log
       const result = await TransportService.getTransportStudents(params);
-      console.log('📥 API Response:', result); // Debug log
       
       if (!result.success) {
         throw new Error(result.error);
       }
-      
-      console.log('📊 Students data:', result.data); // Debug log
-      console.log('📊 First student details:', result.data?.[0]); // Debug log
       
       setStudents(result.data);
       
       // Update pagination info
       setPagination(prev => ({
         ...prev,
-        total: result.total || 0,
-        pages: result.pages || 0
+        total: result.total || 0
       }));
     } catch (err) {
-      console.error('❌ Error loading students:', err); // Debug log
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setPagination(prev => ({
+      ...prev,
+      rowsPerPage: parseInt(event.target.value, 10),
+      page: 0
+    }));
+  };
+
   const handleOpenDialog = (student = null) => {
     if (student) {
       setEditingStudent(student);
       setFormData({
-        full_name: student.full_name || '',
+        name: student.name || '',
         email: student.email || '',
         phone: student.phone || '',
-        register_number: student.register_number || '',
+        student_id: student.student_id || '',
         gender: student.gender || '',
         department_id: student.department_id || '',
         course_id: student.course_id || '',
@@ -185,15 +199,20 @@ const StudentManagement = () => {
         current_semester: student.current_semester || '',
         father_name: student.father_name || '',
         mother_name: student.mother_name || '',
+        address: student.address || '',
+        route_id: student.route_id || '',
+        route_name: student.route_name || '',
+        pickup_point: student.pickup_point || '',
+        fee_status: student.fee_status || 'Pending',
         status: student.status || 'active',
       });
     } else {
       setEditingStudent(null);
       setFormData({
-        full_name: '',
+        name: '',
         email: '',
         phone: '',
-        register_number: '',
+        student_id: '',
         gender: '',
         department_id: '',
         course_id: '',
@@ -206,6 +225,11 @@ const StudentManagement = () => {
         current_semester: '',
         father_name: '',
         mother_name: '',
+        address: '',
+        route_id: '',
+        route_name: '',
+        pickup_point: '',
+        fee_status: 'Pending',
         status: 'active',
       });
     }
@@ -243,11 +267,11 @@ const StudentManagement = () => {
   };
 
   const filteredStudents = students.filter(student => {
-    const fullName = student.full_name || (student.email ? extractNameFromEmail(student.email) : '');
-    const registerNumber = student.register_number || (student.email ? generateRegisterNumber(student.email) : '');
+    const name = student.name || (student.email ? extractNameFromEmail(student.email) : '');
+    const studentId = student.student_id || (student.email ? generateRegisterNumber(student.email) : '');
     
-    const matchesSearch = (fullName && fullName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         (registerNumber && registerNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    const matchesSearch = (name && name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (studentId && studentId.toLowerCase().includes(searchTerm.toLowerCase())) ||
                          (student.email && student.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
                          (student.id && student.id.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = filterStatus === 'All' || student.status === filterStatus;
@@ -336,22 +360,14 @@ const StudentManagement = () => {
             <TableHead className="bg-gray-50">
               <TableRow>
                 <TableCell className="font-semibold">ID</TableCell>
-                <TableCell className="font-semibold">Register Number</TableCell>
-                <TableCell className="font-semibold">Full Name</TableCell>
+                <TableCell className="font-semibold">Student ID</TableCell>
+                <TableCell className="font-semibold">Name</TableCell>
                 <TableCell className="font-semibold">Email</TableCell>
                 <TableCell className="font-semibold">Phone</TableCell>
                 <TableCell className="font-semibold">Gender</TableCell>
-                <TableCell className="font-semibold">Department ID</TableCell>
-                <TableCell className="font-semibold">Course ID</TableCell>
+                <TableCell className="font-semibold">Department</TableCell>
+                <TableCell className="font-semibold">Course</TableCell>
                 <TableCell className="font-semibold">Year</TableCell>
-                <TableCell className="font-semibold">Quota</TableCell>
-                <TableCell className="font-semibold">Category</TableCell>
-                <TableCell className="font-semibold">Hostel Required</TableCell>
-                <TableCell className="font-semibold">Transport Required</TableCell>
-                <TableCell className="font-semibold">Admission Year</TableCell>
-                <TableCell className="font-semibold">Current Semester</TableCell>
-                <TableCell className="font-semibold">Father Name</TableCell>
-                <TableCell className="font-semibold">Mother Name</TableCell>
                 <TableCell className="font-semibold">Status</TableCell>
                 <TableCell className="font-semibold">Actions</TableCell>
               </TableRow>
@@ -366,40 +382,20 @@ const StudentManagement = () => {
                   </TableCell>
                   <TableCell>
                     <Box className="font-mono text-xs">
-                      {student.register_number || (student.email ? generateRegisterNumber(student.email) : 'No Register Number')}
+                      {student.student_id || (student.email ? generateRegisterNumber(student.email) : 'No Student ID')}
                     </Box>
                   </TableCell>
-                  <TableCell>{student.full_name || (student.email ? extractNameFromEmail(student.email) : 'No Name')}</TableCell>
+                  <TableCell>{student.name || (student.email ? extractNameFromEmail(student.email) : 'No Name')}</TableCell>
                   <TableCell>{student.email || 'No Email'}</TableCell>
                   <TableCell>{student.phone || 'No Phone'}</TableCell>
                   <TableCell>{student.gender || 'N/A'}</TableCell>
                   <TableCell>{student.department_id || 'N/A'}</TableCell>
                   <TableCell>{student.course_id || 'N/A'}</TableCell>
                   <TableCell>{student.year || 'N/A'}</TableCell>
-                  <TableCell>{student.quota || 'N/A'}</TableCell>
-                  <TableCell>{student.category || 'N/A'}</TableCell>
                   <TableCell>
                     <Chip
-                      label={student.hostel_required ? 'Yes' : 'No'}
-                      color={student.hostel_required ? 'success' : 'default'}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={student.transport_required ? 'Yes' : 'No'}
-                      color={student.transport_required ? 'success' : 'default'}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>{student.admission_year || 'N/A'}</TableCell>
-                  <TableCell>{student.current_semester || 'N/A'}</TableCell>
-                  <TableCell>{student.father_name || 'N/A'}</TableCell>
-                  <TableCell>{student.mother_name || 'N/A'}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={student.status || 'No Status'}
-                      color={student.status === 'active' ? 'success' : 'default'}
+                      label={student.status || 'Active'}
+                      color={student.status === 'Active' ? 'success' : 'default'}
                       size="small"
                     />
                   </TableCell>
@@ -491,9 +487,9 @@ const StudentManagement = () => {
         <DialogContent>
           <Box className="space-y-4 mt-2">
             <TextField
-              label="Full Name"
-              value={formData.full_name}
-              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+              label="Name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               fullWidth
               required
             />
@@ -513,9 +509,9 @@ const StudentManagement = () => {
               required
             />
             <TextField
-              label="Register Number"
-              value={formData.register_number}
-              onChange={(e) => setFormData({ ...formData, register_number: e.target.value })}
+              label="Student ID"
+              value={formData.student_id}
+              onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
               fullWidth
               required
             />
@@ -603,6 +599,43 @@ const StudentManagement = () => {
               onChange={(e) => setFormData({ ...formData, mother_name: e.target.value })}
               fullWidth
             />
+            <TextField
+              label="Address"
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              fullWidth
+              multiline
+              rows={2}
+            />
+            <TextField
+              label="Route ID"
+              value={formData.route_id}
+              onChange={(e) => setFormData({ ...formData, route_id: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Route Name"
+              value={formData.route_name}
+              onChange={(e) => setFormData({ ...formData, route_name: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Pickup Point"
+              value={formData.pickup_point}
+              onChange={(e) => setFormData({ ...formData, pickup_point: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              select
+              label="Fee Status"
+              value={formData.fee_status}
+              onChange={(e) => setFormData({ ...formData, fee_status: e.target.value })}
+              fullWidth
+            >
+              <MenuItem value="Pending">Pending</MenuItem>
+              <MenuItem value="Paid">Paid</MenuItem>
+              <MenuItem value="Overdue">Overdue</MenuItem>
+            </TextField>
             <TextField
               select
               label="Status"

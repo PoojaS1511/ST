@@ -64,8 +64,7 @@ def delete_transport_student(student_id):
 @transport_bp.route('/faculty', methods=['GET'])
 def get_transport_faculty():
     """Get all transport faculty"""
-    result = faculty_controller.get_faculty()
-    return jsonify(result)
+    return faculty_controller.get_faculty()
 
 @transport_bp.route('/faculty', methods=['POST'])
 def add_transport_faculty():

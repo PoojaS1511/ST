@@ -21,7 +21,8 @@ import {
   Chip,
   MenuItem,
   CircularProgress,
-  Alert
+  Alert,
+  TablePagination
 } from '@mui/material';
 import { Search, Plus, Edit, Trash2, X } from 'lucide-react';
 import TransportService from '../../services/transportService';
@@ -32,14 +33,21 @@ const FacultyManagement = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('All');
+  const [pagination, setPagination] = useState({
+    page: 0,
+    rowsPerPage: 10,
+    total: 0
+  });
   const [openDialog, setOpenDialog] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState(null);
   const [formData, setFormData] = useState({
+    faculty_id: '',
     name: '',
     email: '',
     phone: '',
     department: '',
     route_id: '',
+    route_name: '',
     status: 'Active',
   });
 
@@ -47,16 +55,33 @@ const FacultyManagement = () => {
 
   useEffect(() => {
     loadFaculty();
-  }, []);
+  }, [pagination.page, pagination.rowsPerPage, filterDepartment, searchTerm]);
 
   const loadFaculty = async () => {
     try {
       setLoading(true);
-      const result = await TransportService.getTransportFaculty();
+      const params = {
+        page: pagination.page + 1,
+        limit: pagination.rowsPerPage
+      };
+
+      if (filterDepartment !== 'All') {
+        params.department = filterDepartment;
+      }
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+
+      const result = await TransportService.getTransportFaculty(params);
       if (!result.success) {
         throw new Error(result.error);
       }
       setFaculty(result.data);
+      setPagination(prev => ({
+        ...prev,
+        total: result.total || 0
+      }));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -64,25 +89,41 @@ const FacultyManagement = () => {
     }
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setPagination(prev => ({
+      ...prev,
+      rowsPerPage: parseInt(event.target.value, 10),
+      page: 0
+    }));
+  };
+
   const handleOpenDialog = (facultyMember = null) => {
     if (facultyMember) {
       setEditingFaculty(facultyMember);
       setFormData({
-        name: facultyMember.name,
-        email: facultyMember.email,
-        phone: facultyMember.phone,
-        department: facultyMember.department,
-        route_id: facultyMember.route_id,
-        status: facultyMember.status,
+        faculty_id: facultyMember.faculty_id || '',
+        name: facultyMember.name || '',
+        email: facultyMember.email || '',
+        phone: facultyMember.phone || '',
+        department: facultyMember.department || '',
+        route_id: facultyMember.route_id || '',
+        route_name: facultyMember.route_name || '',
+        status: facultyMember.status || 'Active',
       });
     } else {
       setEditingFaculty(null);
       setFormData({
+        faculty_id: '',
         name: '',
         email: '',
         phone: '',
         department: '',
         route_id: '',
+        route_name: '',
         status: 'Active',
       });
     }
@@ -163,14 +204,16 @@ const FacultyManagement = () => {
         </Alert>
       )}
 
-      {/* Filters */}
       <Card>
         <CardContent>
           <Box className="flex gap-4">
             <TextField
-              placeholder="Search faculty..."
+              placeholder="Search faculty by ID, name, or email..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPagination(prev => ({ ...prev, page: 0 }));
+              }}
               InputProps={{
                 startAdornment: <Search size={20} className="mr-2 text-gray-400" />,
               }}
@@ -180,7 +223,10 @@ const FacultyManagement = () => {
             <TextField
               select
               value={filterDepartment}
-              onChange={(e) => setFilterDepartment(e.target.value)}
+              onChange={(e) => {
+                setFilterDepartment(e.target.value);
+                setPagination(prev => ({ ...prev, page: 0 }));
+              }}
               size="small"
               className="w-40"
             >
@@ -210,16 +256,16 @@ const FacultyManagement = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredFaculty.map((member) => (
+              {faculty.map((member) => (
                 <TableRow key={member.id} hover>
                   <TableCell>{member.faculty_id}</TableCell>
                   <TableCell>{member.name}</TableCell>
                   <TableCell>{member.email}</TableCell>
-                  <TableCell>{member.phone_number}</TableCell>
+                  <TableCell>{member.phone}</TableCell>
                   <TableCell>
                     <Chip label={member.department} size="small" color="primary" variant="outlined" />
                   </TableCell>
-                  <TableCell>{member.route}</TableCell>
+                  <TableCell>{member.route_name || member.route}</TableCell>
                   <TableCell>
                     <Chip
                       label={member.status}
@@ -247,9 +293,25 @@ const FacultyManagement = () => {
                   </TableCell>
                 </TableRow>
               ))}
+              {faculty.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} align="center" className="py-8">
+                    <Typography color="text.secondary">No faculty members found</Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          component="div"
+          count={pagination.total}
+          rowsPerPage={pagination.rowsPerPage}
+          page={pagination.page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
       </Card>
 
       {/* Add/Edit Dialog */}
@@ -264,6 +326,13 @@ const FacultyManagement = () => {
         </DialogTitle>
         <DialogContent>
           <Box className="space-y-4 mt-2">
+            <TextField
+              label="Faculty ID"
+              value={formData.faculty_id}
+              onChange={(e) => setFormData({ ...formData, faculty_id: e.target.value })}
+              fullWidth
+              required
+            />
             <TextField
               label="Name"
               value={formData.name}
@@ -304,6 +373,12 @@ const FacultyManagement = () => {
               onChange={(e) => setFormData({ ...formData, route_id: e.target.value })}
               fullWidth
               required
+            />
+            <TextField
+              label="Route Name"
+              value={formData.route_name}
+              onChange={(e) => setFormData({ ...formData, route_name: e.target.value })}
+              fullWidth
             />
             <TextField
               select

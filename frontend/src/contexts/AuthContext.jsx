@@ -113,8 +113,14 @@ export const AuthProvider = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const locationRef = useRef(location);
   const isMounted = useRef(true);
   const authListener = useRef(null);
+
+  // Keep locationRef updated
+  useEffect(() => {
+    locationRef.current = location;
+  }, [location]);
 
   const updateUserState = useCallback(async (newSession) => {
     if (!isMounted.current) return null;
@@ -187,13 +193,11 @@ export const AuthProvider = ({ children }) => {
       return null;
     } finally {
       if (isMounted.current) {
-        if (!isInitialized) {
-          setIsInitialized(true);
-        }
+        setIsInitialized(true);
         setLoading(false);
       }
     }
-  }, [isInitialized, navigate]);
+  }, [navigate]);
 
   const login = useCallback(async (email, password) => {
     if (!email || !password) {
@@ -441,7 +445,8 @@ export const AuthProvider = ({ children }) => {
               // Only redirect to the admin dashboard if the current path is not already
               // an admin route or a Quality page. This prevents interrupting admins
               // who intentionally navigated to /quality/*.
-              if (updatedUser?.role === 'admin' && !location.pathname.startsWith('/admin') && !location.pathname.startsWith('/quality')) {
+              const currentPath = locationRef.current.pathname;
+              if (updatedUser?.role === 'admin' && !currentPath.startsWith('/admin') && !currentPath.startsWith('/quality')) {
                 navigate('/admin/dashboard', { replace: true });
               }
             }
@@ -487,7 +492,7 @@ export const AuthProvider = ({ children }) => {
         authListener.current.subscription.unsubscribe();
       }
     };
-  }, [updateUserState, location.pathname, navigate]);
+  }, [updateUserState]);
 
   /**
    * Checks if the current user has any of the specified roles

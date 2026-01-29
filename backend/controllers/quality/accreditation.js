@@ -5,23 +5,18 @@ async function calculateReadinessScore() {
   try {
     // Get faculty performance data
     const { data: faculty } = await supabase
-      .from('faculty')
-      .select('performance_rating, department');
+      .from('quality_facultyperformance')
+      .select('performance_rating, department, research_papers');
 
     // Get audit compliance data
     const { data: audits } = await supabase
-      .from('audits')
+      .from('quality_audits')
       .select('compliance_score, department');
-
-    // Get grievance resolution data
-    const { data: grievances } = await supabase
-      .from('grievances')
-      .select('status');
 
     // Get policy compliance data
     const { data: policies } = await supabase
-      .from('policies')
-      .select('compliance_score');
+      .from('quality_policy')
+      .select('compliance_status');
 
     // Calculate criteria scores
     const criteriaScores = {
@@ -29,7 +24,7 @@ async function calculateReadinessScore() {
       'Teaching-Learning': calculateFacultyScore(faculty) * 0.9,
       'Research': calculateResearchScore(faculty),
       'Infrastructure': 85, // Mock score
-      'Student Support': calculateGrievanceScore(grievances),
+      'Student Support': 80, // Mock score (grievances table missing)
       'Governance': calculatePolicyScore(policies),
       'Innovative Practices': 80, // Mock score
     };
@@ -78,20 +73,14 @@ function calculateFacultyScore(faculty) {
 
 function calculateResearchScore(faculty) {
   if (!faculty || faculty.length === 0) return 0;
-  const total = faculty.reduce((sum, f) => sum + (f.research_output || 0), 0);
+  const total = faculty.reduce((sum, f) => sum + (f.research_papers || 0), 0);
   return Math.min(100, Math.round(total / faculty.length * 10));
-}
-
-function calculateGrievanceScore(grievances) {
-  if (!grievances || grievances.length === 0) return 100;
-  const resolved = grievances.filter(g => g.status === 'resolved').length;
-  return Math.round((resolved / grievances.length) * 100);
 }
 
 function calculatePolicyScore(policies) {
   if (!policies || policies.length === 0) return 0;
-  const total = policies.reduce((sum, p) => sum + (p.compliance_score || 0), 0);
-  return Math.round(total / policies.length);
+  const compliant = policies.filter(p => p.compliance_status === 'Compliant').length;
+  return Math.round((compliant / policies.length) * 100);
 }
 
 function calculateAuditScore(audits) {
@@ -170,12 +159,11 @@ exports.getAllReports = async (req, res) => {
     const { page = 1, limit = 10, accreditation_body, status } = req.query;
     
     let query = supabase
-      .from('accreditation_reports')
+      .from('quality_accreditation')
       .select('*', { count: 'exact' })
-      .order('generated_date', { ascending: false });
+      .order('report_date', { ascending: false });
 
-    if (accreditation_body) query = query.eq('accreditation_body', accreditation_body);
-    if (status) query = query.eq('status', status);
+    if (accreditation_body) query = query.eq('report_type', accreditation_body);
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
@@ -184,9 +172,19 @@ exports.getAllReports = async (req, res) => {
 
     if (error) throw error;
 
+    const mappedData = data ? data.map(report => ({
+      id: report.report_id,
+      accreditation_body: report.report_type,
+      generated_date: report.report_date,
+      overall_score: report.score,
+      status: 'completed',
+      recommendations: [report.recommendations],
+      department: report.department
+    })) : [];
+
     res.json({
       success: true,
-      data: data || [],
+      data: mappedData,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -205,27 +203,21 @@ exports.getAllReports = async (req, res) => {
 
 exports.generateReport = async (req, res) => {
   try {
-    const { accreditation_body, academic_year } = req.body;
+    const { accreditation_body, academic_year, department } = req.body;
     
     // Calculate readiness score and generate report
     const readinessScore = await calculateReadinessScore();
     
     const reportData = {
-      accreditation_body,
-      academic_year,
-      overall_score: readinessScore.overall_score,
-      criteria_scores: readinessScore.criteria_scores,
-      department_scores: readinessScore.department_scores,
-      readiness_level: getReadinessLevel(readinessScore.overall_score),
-      recommendations: generateRecommendations(readinessScore),
-      strengths: identifyStrengths(readinessScore),
-      weaknesses: identifyWeaknesses(readinessScore),
-      generated_date: new Date().toISOString(),
-      status: 'draft'
+      report_type: accreditation_body,
+      department: department || 'Institutional',
+      report_date: new Date().toISOString().split('T')[0],
+      score: readinessScore.overall_score,
+      recommendations: generateRecommendations(readinessScore).join(', ')
     };
 
     const { data, error } = await supabase
-      .from('accreditation_reports')
+      .from('quality_accreditation')
       .insert([reportData])
       .select();
 
@@ -233,7 +225,14 @@ exports.generateReport = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      data: data[0],
+      data: {
+        id: data[0].report_id,
+        accreditation_body: data[0].report_type,
+        generated_date: data[0].report_date,
+        overall_score: data[0].score,
+        recommendations: [data[0].recommendations],
+        department: data[0].department
+      },
       message: 'Accreditation report generated successfully'
     });
   } catch (error) {
@@ -249,33 +248,33 @@ exports.getAccreditationAnalytics = async (req, res) => {
   try {
     // Get historical reports for trend analysis
     const { data: reports } = await supabase
-      .from('accreditation_reports')
-      .select('overall_score, generated_date, accreditation_body')
-      .order('generated_date', { ascending: true });
+      .from('quality_accreditation')
+      .select('*')
+      .order('report_date', { ascending: true });
 
     // Score trends
     const scoreTrends = reports ? 
       reports.map(report => ({
-        date: new Date(report.generated_date).toLocaleDateString(),
-        score: report.overall_score,
-        body: report.accreditation_body
+        date: report.report_date,
+        score: report.score,
+        body: report.report_type
       })) : [];
 
     // Department-wise readiness
     const { data: faculty } = await supabase
-      .from('faculty')
+      .from('quality_facultyperformance')
       .select('department, performance_rating');
 
     const departmentReadiness = faculty ? 
-      faculty.reduce((acc, faculty) => {
-        const dept = acc.find(item => item.department === faculty.department);
+      faculty.reduce((acc, f) => {
+        const dept = acc.find(item => item.department === f.department);
         if (dept) {
-          dept.total += faculty.performance_rating;
+          dept.total += f.performance_rating;
           dept.count += 1;
         } else {
           acc.push({
-            department: faculty.department,
-            total: faculty.performance_rating,
+            department: f.department,
+            total: f.performance_rating,
             count: 1
           });
         }
@@ -295,9 +294,9 @@ exports.getAccreditationAnalytics = async (req, res) => {
 
     if (reports) {
       reports.forEach(report => {
-        if (report.overall_score >= 90) readinessDistribution[0].count++;
-        else if (report.overall_score >= 75) readinessDistribution[1].count++;
-        else if (report.overall_score >= 60) readinessDistribution[2].count++;
+        if (report.score >= 90) readinessDistribution[0].count++;
+        else if (report.score >= 75) readinessDistribution[1].count++;
+        else if (report.score >= 60) readinessDistribution[2].count++;
         else readinessDistribution[3].count++;
       });
     }

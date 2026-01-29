@@ -1,12 +1,16 @@
 """
 Transport Routes API Routes
 Handles the transport_routes table with exact schema:
-- id (bigint, NOT NULL)
-- bus_name (text)
-- route (text)
-- capacity (bigint)
-- driver_name (text)
-- faculty_id (uuid)
+- id (uuid, NOT NULL)
+- route_id (text)
+- route_name (text)
+- stops (jsonb)
+- pickup_time (time)
+- drop_time (time)
+- total_students (integer)
+- assigned_bus (text)
+- assigned_driver (text)
+- status (text)
 """
 
 from flask import Blueprint
@@ -59,12 +63,16 @@ def health_check():
         'message': 'Transport Routes API is running',
         'table': 'transport_routes',
         'schema': {
-            'id': 'bigint (NOT NULL)',
-            'bus_name': 'text',
-            'route': 'text',
-            'capacity': 'bigint',
-            'driver_name': 'text',
-            'faculty_id': 'uuid'
+            'id': 'uuid (PRIMARY KEY)',
+            'route_id': 'varchar(20) (UNIQUE)',
+            'route_name': 'varchar(255)',
+            'stops': 'jsonb',
+            'pickup_time': 'time',
+            'drop_time': 'time',
+            'total_students': 'integer',
+            'assigned_bus': 'varchar(20)',
+            'assigned_driver': 'varchar(50)',
+            'status': 'varchar(20)'
         }
     }
 
@@ -75,7 +83,7 @@ def get_info():
         'success': True,
         'data': {
             'name': 'Transport Routes Management API',
-            'version': '1.0.0',
+            'version': '1.1.0',
             'description': 'Backend API for transport_routes table management',
             'table': 'transport_routes',
             'endpoints': {
@@ -89,8 +97,8 @@ def get_info():
             },
             'supported_parameters': {
                 'pagination': ['limit', 'offset', 'page'],
-                'filtering': ['bus_name', 'route', 'driver_name', 'faculty_id'],
-                'sorting': 'Ordered by id (ascending)'
+                'filtering': ['route_id', 'route_name', 'status'],
+                'sorting': 'Ordered by route_id (ascending)'
             }
         }
     }

@@ -46,37 +46,84 @@ def get_dashboard_stats():
     try:
         # Student statistics
         total_students = supabase.table('students').select('id', count='exact').execute().count
-        
+
+        # Gender statistics
+        male_count = 0
+        female_count = 0
+        try:
+            # Get gender counts efficiently with pagination to avoid long-running queries
+            limit = 1000
+            offset = 0
+            while True:
+                gender_response = supabase.table('students').select('gender').limit(limit).offset(offset).execute()
+                if not gender_response.data:
+                    break
+
+                for student in gender_response.data:
+                    gender = str(student.get('gender', '')).lower()
+                    if 'male' in gender or gender == 'm':
+                        male_count += 1
+                    elif 'female' in gender or gender == 'f':
+                        female_count += 1
+
+                if len(gender_response.data) < limit:
+                    break
+                offset += limit
+        except Exception as e:
+            print(f"Warning: Could not fetch gender statistics: {str(e)}")
+            male_count = 0
+            female_count = 0
+
         # Faculty statistics
         total_faculty = supabase.table('faculty').select('id', count='exact').execute().count
-        
-        # Admission statistics
-        total_applications = supabase.table('admissions').select('id', count='exact').execute().count
-        pending_applications = supabase.table('admissions').select('id', count='exact').eq('status', 'pending').execute().count
-        
+
+        # Department statistics
+        total_departments = supabase.table('departments').select('id', count='exact').execute().count
+
+        # Admission statistics (handle case where admissions table doesn't exist)
+        try:
+            total_applications = supabase.table('admissions').select('id', count='exact').execute().count
+            pending_applications = supabase.table('admissions').select('id', count='exact').eq('status', 'pending').execute().count
+            week_ago = (datetime.now() - timedelta(days=7)).isoformat()
+            recent_admissions = supabase.table('admissions').select('id', count='exact').gte('created_at', week_ago).execute().count
+        except Exception as e:
+            # If admissions table doesn't exist, set values to 0
+            if "relation" in str(e).lower() and "does not exist" in str(e).lower():
+                total_applications = 0
+                pending_applications = 0
+                recent_admissions = 0
+            else:
+                raise e
+
         # Course statistics
         total_courses = supabase.table('courses').select('id', count='exact').execute().count
-        
-        # Recent activities (last 7 days)
-        week_ago = (datetime.now() - timedelta(days=7)).isoformat()
-        recent_admissions = supabase.table('admissions').select('id', count='exact').gte('created_at', week_ago).execute().count
-        
+
         # Attendance statistics (last 30 days)
-        month_ago = (datetime.now() - timedelta(days=30)).isoformat()
-        attendance_records = supabase.table('attendance').select('status').gte('created_at', month_ago).execute()
-        
-        total_attendance = len(attendance_records.data)
-        present_count = len([r for r in attendance_records.data if r['status'] == 'present'])
-        overall_attendance = (present_count / total_attendance * 100) if total_attendance > 0 else 0
-        
+        try:
+            month_ago = (datetime.now() - timedelta(days=30)).isoformat()
+            attendance_records = supabase.table('attendance').select('status').gte('created_at', month_ago).execute()
+
+            total_attendance = len(attendance_records.data)
+            present_count = len([r for r in attendance_records.data if r['status'] == 'present'])
+            overall_attendance = (present_count / total_attendance * 100) if total_attendance > 0 else 0
+        except Exception as e:
+            print(f"Warning: Could not fetch attendance statistics: {str(e)}")
+            total_attendance = 0
+            overall_attendance = 0
+
         return jsonify({
             'success': True,
             'data': {
+                'total': total_students,
+                'male': male_count,
+                'female': female_count,
+                'departments': total_departments,
+                'faculty': total_faculty,
                 'students': {
                     'total': total_students,
                     'new_this_week': recent_admissions
                 },
-                'faculty': {
+                'faculty_stats': {
                     'total': total_faculty
                 },
                 'admissions': {
@@ -93,7 +140,7 @@ def get_dashboard_stats():
                 }
             }
         }), 200
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Card, CardContent, Typography, Button, TextField, Dialog, DialogTitle,
   DialogContent, DialogActions, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper, IconButton, Chip, CircularProgress, Alert, List, ListItem, ListItemText
+  TableHead, TableRow, Paper, IconButton, Chip, CircularProgress, Alert, List, ListItem, ListItemText, TablePagination, MenuItem
 } from '@mui/material';
 import { Search, Plus, Edit, Trash2, X } from 'lucide-react';
 import TransportService from '../../services/transportService';
@@ -12,22 +12,48 @@ const RouteManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [pagination, setPagination] = useState({
+    page: 0,
+    rowsPerPage: 10,
+    total: 0
+  });
   const [openDialog, setOpenDialog] = useState(false);
   const [viewDialog, setViewDialog] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [editingRoute, setEditingRoute] = useState(null);
   const [formData, setFormData] = useState({
-    bus_name: '', route: '', capacity: '', driver_name: '', faculty_id: '',
+    route_id: '',
+    route_name: '',
+    stops: [],
+    pickup_time: '',
+    drop_time: '',
+    total_students: 0,
+    assigned_bus: '',
+    assigned_driver: '',
+    status: 'Active',
   });
 
-  useEffect(() => { loadRoutes(); }, []);
+  useEffect(() => { loadRoutes(); }, [pagination.page, pagination.rowsPerPage, searchTerm]);
 
   const loadRoutes = async () => {
     try {
       setLoading(true);
-      const result = await TransportService.getRoutes();
+      const params = {
+        page: pagination.page + 1,
+        limit: pagination.rowsPerPage
+      };
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+
+      const result = await TransportService.getRoutes(params);
       if (!result.success) throw new Error(result.error);
       setRoutes(result.data);
+      setPagination(prev => ({
+        ...prev,
+        total: result.total || 0
+      }));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -35,17 +61,44 @@ const RouteManagement = () => {
     }
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setPagination(prev => ({
+      ...prev,
+      rowsPerPage: parseInt(event.target.value, 10),
+      page: 0
+    }));
+  };
+
   const handleOpenDialog = (route = null) => {
     if (route) {
       setEditingRoute(route);
       setFormData({
-        bus_name: route.bus_name, route: route.route, capacity: route.capacity.toString(),
-        driver_name: route.driver_name, faculty_id: route.faculty_id || '',
+        route_id: route.route_id || '',
+        route_name: route.route_name || '',
+        stops: route.stops || [],
+        pickup_time: route.pickup_time || '',
+        drop_time: route.drop_time || '',
+        total_students: route.total_students || 0,
+        assigned_bus: route.assigned_bus || '',
+        assigned_driver: route.assigned_driver || '',
+        status: route.status || 'Active',
       });
     } else {
       setEditingRoute(null);
       setFormData({
-        bus_name: '', route: '', capacity: '', driver_name: '', faculty_id: '',
+        route_id: '',
+        route_name: '',
+        stops: [],
+        pickup_time: '',
+        drop_time: '',
+        total_students: 0,
+        assigned_bus: '',
+        assigned_driver: '',
+        status: 'Active',
       });
     }
     setOpenDialog(true);
@@ -88,8 +141,8 @@ const RouteManagement = () => {
   };
 
   const filteredRoutes = routes.filter(route =>
-    route.bus_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    route.route.toLowerCase().includes(searchTerm.toLowerCase())
+    (route.route_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (route.route_id || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -110,8 +163,11 @@ const RouteManagement = () => {
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
 
       <Card><CardContent>
-        <TextField placeholder="Search routes..." value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+        <TextField placeholder="Search routes by ID or name..." value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setPagination(prev => ({ ...prev, page: 0 }));
+          }}
           InputProps={{ startAdornment: <Search size={20} className="mr-2 text-gray-400" /> }}
           className="w-full" size="small" />
       </CardContent></Card>
@@ -121,24 +177,30 @@ const RouteManagement = () => {
           <Table>
             <TableHead className="bg-gray-50">
               <TableRow>
-                <TableCell className="font-semibold">ID</TableCell>
-                <TableCell className="font-semibold">Bus Name</TableCell>
-                <TableCell className="font-semibold">Route</TableCell>
-                <TableCell className="font-semibold">Capacity</TableCell>
-                <TableCell className="font-semibold">Driver Name</TableCell>
-                <TableCell className="font-semibold">Faculty ID</TableCell>
+                <TableCell className="font-semibold">Route ID</TableCell>
+                <TableCell className="font-semibold">Route Name</TableCell>
+                <TableCell className="font-semibold">Pickup Time</TableCell>
+                <TableCell className="font-semibold">Drop Time</TableCell>
+                <TableCell className="font-semibold">Students</TableCell>
+                <TableCell className="font-semibold">Bus</TableCell>
+                <TableCell className="font-semibold">Driver</TableCell>
+                <TableCell className="font-semibold">Status</TableCell>
                 <TableCell className="font-semibold">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredRoutes.map((route) => (
+              {routes.map((route) => (
                 <TableRow key={route.id} hover className="cursor-pointer" onClick={() => handleViewRoute(route)}>
-                  <TableCell>{route.id}</TableCell>
-                  <TableCell className="font-medium">{route.bus_name}</TableCell>
-                  <TableCell>{route.route}</TableCell>
-                  <TableCell>{route.capacity}</TableCell>
-                  <TableCell>{route.driver_name}</TableCell>
-                  <TableCell>{route.faculty_id || 'N/A'}</TableCell>
+                  <TableCell>{route.route_id}</TableCell>
+                  <TableCell className="font-medium">{route.route_name}</TableCell>
+                  <TableCell>{route.pickup_time}</TableCell>
+                  <TableCell>{route.drop_time}</TableCell>
+                  <TableCell>{route.total_students}</TableCell>
+                  <TableCell>{route.assigned_bus}</TableCell>
+                  <TableCell>{route.assigned_driver}</TableCell>
+                  <TableCell>
+                    <Chip label={route.status} size="small" color={route.status === 'Active' ? 'success' : 'default'} />
+                  </TableCell>
                   <TableCell>
                     <Box className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                       <IconButton size="small" onClick={() => handleOpenDialog(route)} className="text-blue-600">
@@ -151,9 +213,25 @@ const RouteManagement = () => {
                   </TableCell>
                 </TableRow>
               ))}
+              {routes.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={9} align="center" className="py-8">
+                    <Typography color="text.secondary">No routes found</Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          component="div"
+          count={pagination.total}
+          rowsPerPage={pagination.rowsPerPage}
+          page={pagination.page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
       </Card>
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
@@ -163,16 +241,23 @@ const RouteManagement = () => {
         </DialogTitle>
         <DialogContent>
           <Box className="space-y-4 mt-2">
-            <TextField label="Bus Name" value={formData.bus_name}
-              onChange={(e) => setFormData({ ...formData, bus_name: e.target.value })} fullWidth required />
-            <TextField label="Route" value={formData.route}
-              onChange={(e) => setFormData({ ...formData, route: e.target.value })} fullWidth required />
-            <TextField label="Capacity" type="number" value={formData.capacity}
-              onChange={(e) => setFormData({ ...formData, capacity: e.target.value })} fullWidth required />
-            <TextField label="Driver Name" value={formData.driver_name}
-              onChange={(e) => setFormData({ ...formData, driver_name: e.target.value })} fullWidth required />
-            <TextField label="Faculty ID (Optional)" value={formData.faculty_id}
-              onChange={(e) => setFormData({ ...formData, faculty_id: e.target.value })} fullWidth />
+            <TextField label="Route ID" value={formData.route_id}
+              onChange={(e) => setFormData({ ...formData, route_id: e.target.value })} fullWidth required />
+            <TextField label="Route Name" value={formData.route_name}
+              onChange={(e) => setFormData({ ...formData, route_name: e.target.value })} fullWidth required />
+            <TextField label="Pickup Time" type="time" value={formData.pickup_time}
+              onChange={(e) => setFormData({ ...formData, pickup_time: e.target.value })} fullWidth required InputLabelProps={{ shrink: true }} />
+            <TextField label="Drop Time" type="time" value={formData.drop_time}
+              onChange={(e) => setFormData({ ...formData, drop_time: e.target.value })} fullWidth required InputLabelProps={{ shrink: true }} />
+            <TextField label="Assigned Bus" value={formData.assigned_bus}
+              onChange={(e) => setFormData({ ...formData, assigned_bus: e.target.value })} fullWidth />
+            <TextField label="Assigned Driver" value={formData.assigned_driver}
+              onChange={(e) => setFormData({ ...formData, assigned_driver: e.target.value })} fullWidth />
+            <TextField select label="Status" value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })} fullWidth>
+              <MenuItem value="Active">Active</MenuItem>
+              <MenuItem value="Inactive">Inactive</MenuItem>
+            </TextField>
           </Box>
         </DialogContent>
         <DialogActions className="p-4">
@@ -193,28 +278,36 @@ const RouteManagement = () => {
             <Box className="space-y-4">
               <Box className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                 <Box>
-                  <Typography variant="body2" color="text.secondary">ID</Typography>
-                  <Typography variant="body1" className="font-medium">{selectedRoute.id}</Typography>
+                  <Typography variant="body2" color="text.secondary">Route ID</Typography>
+                  <Typography variant="body1" className="font-medium">{selectedRoute.route_id}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="body2" color="text.secondary">Bus Name</Typography>
-                  <Typography variant="body1" className="font-medium">{selectedRoute.bus_name}</Typography>
+                  <Typography variant="body2" color="text.secondary">Route Name</Typography>
+                  <Typography variant="body1" className="font-medium">{selectedRoute.route_name}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="body2" color="text.secondary">Route</Typography>
-                  <Typography variant="body1" className="font-medium">{selectedRoute.route}</Typography>
+                  <Typography variant="body2" color="text.secondary">Pickup Time</Typography>
+                  <Typography variant="body1" className="font-medium">{selectedRoute.pickup_time}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="body2" color="text.secondary">Capacity</Typography>
-                  <Typography variant="body1" className="font-medium">{selectedRoute.capacity}</Typography>
+                  <Typography variant="body2" color="text.secondary">Drop Time</Typography>
+                  <Typography variant="body1" className="font-medium">{selectedRoute.drop_time}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="body2" color="text.secondary">Driver Name</Typography>
-                  <Typography variant="body1" className="font-medium">{selectedRoute.driver_name}</Typography>
+                  <Typography variant="body2" color="text.secondary">Students</Typography>
+                  <Typography variant="body1" className="font-medium">{selectedRoute.total_students}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="body2" color="text.secondary">Faculty ID</Typography>
-                  <Typography variant="body1" className="font-medium">{selectedRoute.faculty_id || 'N/A'}</Typography>
+                  <Typography variant="body2" color="text.secondary">Assigned Bus</Typography>
+                  <Typography variant="body1" className="font-medium">{selectedRoute.assigned_bus}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Assigned Driver</Typography>
+                  <Typography variant="body1" className="font-medium">{selectedRoute.assigned_driver}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Status</Typography>
+                  <Typography variant="body1" className="font-medium">{selectedRoute.status}</Typography>
                 </Box>
               </Box>
             </Box>

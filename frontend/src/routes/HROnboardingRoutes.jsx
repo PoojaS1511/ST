@@ -1,6 +1,5 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
-import HROnboarding from '../pages/HROnboarding';
+import HROnboarding from '../components/hr/HROnboarding';
 
 const HROnboardingRoutes = () => {
   return <HROnboarding />;

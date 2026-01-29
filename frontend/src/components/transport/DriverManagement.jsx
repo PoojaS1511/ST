@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Card, CardContent, Typography, Button, TextField, Dialog, DialogTitle,
   DialogContent, DialogActions, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper, IconButton, Chip, MenuItem, CircularProgress, Alert, Grid
+  TableHead, TableRow, Paper, IconButton, Chip, MenuItem, CircularProgress, Alert, Grid, TablePagination
 } from '@mui/material';
 import { Search, Plus, Edit, Trash2, X, UserCheck, AlertCircle } from 'lucide-react';
 import TransportService from '../../services/transportService';
@@ -13,22 +13,44 @@ const DriverManagement = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [pagination, setPagination] = useState({
+    page: 0,
+    rowsPerPage: 10,
+    total: 0
+  });
   const [openDialog, setOpenDialog] = useState(false);
   const [editingDriver, setEditingDriver] = useState(null);
   const [formData, setFormData] = useState({
-    name: '', phone: '', license_number: '', license_expiry: '', blood_group: '',
+    driver_id: '', name: '', phone: '', license_number: '', license_expiry: '', blood_group: '',
     emergency_contact: '', experience_years: 5, shift: 'Morning', working_hours: '8 hours',
     assigned_bus: '', status: 'Active',
   });
 
-  useEffect(() => { loadDrivers(); }, []);
+  useEffect(() => { loadDrivers(); }, [pagination.page, pagination.rowsPerPage, filterStatus, searchTerm]);
 
   const loadDrivers = async () => {
     try {
       setLoading(true);
-      const result = await TransportService.getDrivers();
+      const params = {
+        page: pagination.page + 1,
+        limit: pagination.rowsPerPage
+      };
+
+      if (filterStatus !== 'All') {
+        params.status = filterStatus;
+      }
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+
+      const result = await TransportService.getDrivers(params);
       if (!result.success) throw new Error(result.error);
       setDrivers(result.data);
+      setPagination(prev => ({
+        ...prev,
+        total: result.total || 0
+      }));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -36,22 +58,50 @@ const DriverManagement = () => {
     }
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setPagination(prev => ({
+      ...prev,
+      rowsPerPage: parseInt(event.target.value, 10),
+      page: 0
+    }));
+  };
+
   const handleOpenDialog = (driver = null) => {
     if (driver) {
       setEditingDriver(driver);
       setFormData({
-        name: driver.name, phone: driver.phone, license_number: driver.license_number,
-        license_expiry: driver.license_expiry, blood_group: driver.blood_group,
-        emergency_contact: driver.emergency_contact, experience_years: driver.experience_years,
-        shift: driver.shift, working_hours: driver.working_hours, assigned_bus: driver.assigned_bus,
-        status: driver.status,
+        driver_id: driver.driver_id || '',
+        name: driver.name || '',
+        phone: driver.phone || '',
+        license_number: driver.license_number || '',
+        license_expiry: driver.license_expiry || '',
+        blood_group: driver.blood_group || '',
+        emergency_contact: driver.emergency_contact || '',
+        experience_years: driver.experience_years || 0,
+        shift: driver.shift || 'Morning',
+        working_hours: driver.working_hours || '8 hours',
+        assigned_bus: driver.assigned_bus || '',
+        status: driver.status || 'Active',
       });
     } else {
       setEditingDriver(null);
       setFormData({
-        name: '', phone: '', license_number: '', license_expiry: '', blood_group: '',
-        emergency_contact: '', experience_years: 5, shift: 'Morning', working_hours: '8 hours',
-        assigned_bus: '', status: 'Active',
+        driver_id: '',
+        name: '',
+        phone: '',
+        license_number: '',
+        license_expiry: '',
+        blood_group: '',
+        emergency_contact: '',
+        experience_years: 5,
+        shift: 'Morning',
+        working_hours: '8 hours',
+        assigned_bus: '',
+        status: 'Active',
       });
     }
     setOpenDialog(true);
@@ -121,7 +171,7 @@ const DriverManagement = () => {
             <Box className="flex items-center justify-between">
               <Box>
                 <Typography color="text.secondary" variant="body2">Total Drivers</Typography>
-                <Typography variant="h4" className="font-bold">{drivers.length}</Typography>
+                <Typography variant="h4" className="font-bold">{pagination.total}</Typography>
               </Box>
               <UserCheck size={32} className="text-blue-600" />
             </Box>
@@ -169,11 +219,17 @@ const DriverManagement = () => {
       <Card>
         <CardContent>
           <Box className="flex gap-4">
-            <TextField placeholder="Search drivers..." value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+            <TextField placeholder="Search drivers by ID, name, or phone..." value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPagination(prev => ({ ...prev, page: 0 }));
+              }}
               InputProps={{ startAdornment: <Search size={20} className="mr-2 text-gray-400" /> }}
               className="flex-1" size="small" />
-            <TextField select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
+            <TextField select value={filterStatus} onChange={(e) => {
+                setFilterStatus(e.target.value);
+                setPagination(prev => ({ ...prev, page: 0 }));
+              }}
               size="small" className="w-40">
               <MenuItem value="All">All Status</MenuItem>
               <MenuItem value="Active">Active</MenuItem>
@@ -201,7 +257,7 @@ const DriverManagement = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredDrivers.map((driver) => (
+              {drivers.map((driver) => (
                 <TableRow key={driver.id} hover>
                   <TableCell>{driver.driver_id}</TableCell>
                   <TableCell>{driver.name}</TableCell>
@@ -234,9 +290,25 @@ const DriverManagement = () => {
                   </TableCell>
                 </TableRow>
               ))}
+              {drivers.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={10} align="center" className="py-8">
+                    <Typography color="text.secondary">No drivers found</Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          component="div"
+          count={pagination.total}
+          rowsPerPage={pagination.rowsPerPage}
+          page={pagination.page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
       </Card>
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>

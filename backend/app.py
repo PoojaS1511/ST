@@ -60,11 +60,11 @@ load_dotenv()
 
 # CORS configuration
 # Allow overriding via ALLOWED_ORIGINS env var (comma-separated list)
-_allowed = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5001,http://127.0.0.1:5001')
+_allowed = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:3001,http://localhost:3002,http://127.0.0.1:3000,http://127.0.0.1:3001,http://127.0.0.1:3002,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5001,http://127.0.0.1:5001')
 ALLOWED_ORIGINS = [origin.strip() for origin in _allowed.split(',') if origin.strip()]
 
-# Initialize CORS
-CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=True)
+# Initialize CORS with automatic OPTIONS handling enabled
+CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=True, methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], allow_headers=["Content-Type", "Authorization", "X-Requested-With"])
 
 # Configure database
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///career_courses.db')
@@ -256,6 +256,17 @@ def admin_required(fn):
 def supabase_auth_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
+        # Handle OPTIONS requests (preflight) with proper CORS response
+        if request.method == 'OPTIONS':
+            response = make_response('', 200)
+            origin = request.headers.get('Origin', 'http://localhost:3001')
+            if origin in ALLOWED_ORIGINS:
+                response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+            response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+            return response
+
         # For non-admin routes, use the regular client
         request.supabase = supabase
 
@@ -316,7 +327,13 @@ def handle_preflight():
     """Return CORS-enabled OK for OPTIONS preflight requests for any path."""
     if request.method == 'OPTIONS':
         resp = make_response('', 200)
-        return add_cors_headers(resp)
+        origin = request.headers.get('Origin', 'http://localhost:3001')
+        if origin in ALLOWED_ORIGINS:
+            resp.headers.add('Access-Control-Allow-Origin', origin)
+        resp.headers.add('Access-Control-Allow-Credentials', 'true')
+        resp.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        resp.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        return resp
 
 @app.route('/api/errors', methods=['POST', 'OPTIONS'])
 def report_error():
@@ -1003,7 +1020,7 @@ _last_student_stats_cache = {
     'timestamp': None
 }
 
-@app.route('/api/students/stats', methods=['GET'])
+@app.route('/api/students/stats', methods=['GET', 'OPTIONS'])
 @supabase_auth_required
 def get_student_stats():
     try:
@@ -2845,7 +2862,7 @@ def register_blueprints():
     """Register all blueprints with the Flask application."""
     # Import blueprints here to avoid circular imports
     from routes.auth import auth_bp
-    from routes.hr import hr_bp
+    from controllers.hrOnboardingController import hr_onboarding_bp as hr_bp
     from routes.admin import admin_bp
     from routes.students import students_bp
     from routes.faculty import faculty_bp
@@ -2867,6 +2884,7 @@ def register_blueprints():
     from routes.transportRoutes import transport_bp
     from routes.transportRoutesApi import transport_routes_bp
     from routes.finance import finance_bp
+    from routes.payrollRoutes import register_payroll_routes
     
     # Quality & Accreditation Management blueprints
     from routes.quality.dashboard import quality_dashboard_bp
@@ -2879,10 +2897,9 @@ def register_blueprints():
     from routes.finance_validation import validation_bp as finance_validation_bp
 
     # Register blueprints with proper URL prefixes
-    # Note: Order matters - more specific routes should be registered first
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')  # Auth routes first
-    app.register_blueprint(hr_bp)  # HR routes (has its own url_prefix)
-    app.register_blueprint(career_courses_bp, url_prefix='/api')  # Career courses routes
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(hr_bp)
+    app.register_blueprint(career_courses_bp, url_prefix='/api')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(students_bp, url_prefix='/api/students')
     app.register_blueprint(faculty_bp, url_prefix='/api/faculty')
@@ -2892,9 +2909,9 @@ def register_blueprints():
     app.register_blueprint(student_dashboard_bp, url_prefix='/api/student_dashboard')
     app.register_blueprint(career_roadmap_bp, url_prefix='/api/roadmap')
     app.register_blueprint(resume_analytics_bp, url_prefix='/api/resume')
-    app.register_blueprint(employee_bp)  # Employee routes (has its own url_prefix)
-    app.register_blueprint(transport_bp)  # Transport routes (has its own url_prefix)
-    app.register_blueprint(transport_routes_bp)  # Transport routes API (has its own url_prefix)
+    app.register_blueprint(employee_bp)
+    app.register_blueprint(transport_bp)
+    app.register_blueprint(transport_routes_bp)
     
     # Quality & Accreditation Management routes
     app.register_blueprint(quality_dashboard_bp, url_prefix='/api/quality')
@@ -2905,9 +2922,10 @@ def register_blueprints():
     app.register_blueprint(quality_policies_bp, url_prefix='/api/quality')
     app.register_blueprint(quality_accreditation_bp, url_prefix='/api/quality')
     app.register_blueprint(finance_validation_bp, url_prefix='/api/finance/validate')
-    app.register_blueprint(finance_bp)  # Finance routes (has its own url_prefix)
+    app.register_blueprint(finance_bp)
+    register_payroll_routes(app)
 
-    # General API routes (register these last to avoid route conflicts)
+    # General API routes
     app.register_blueprint(internships_bp, url_prefix='/api/internships')
     app.register_blueprint(exams_bp, url_prefix='/api')
     app.register_blueprint(attendance_bp, url_prefix='/api')
@@ -2916,7 +2934,7 @@ def register_blueprints():
     app.register_blueprint(upgraded_bp, url_prefix='/api')
     app.register_blueprint(crud_bp, url_prefix='/api')
     
-    print("All blueprints registered successfully")
+    print("All blueprints registered successfully", flush=True)
 
 @app.route('/api/test', methods=['GET'])
 def test_endpoint():
@@ -2949,7 +2967,7 @@ if __name__ == '__main__':
     try:
         print("\nRegistering blueprints...")
         register_blueprints()
-        print("✓ Successfully registered all blueprints")
+        print("Successfully registered all blueprints")
         
         # List all registered routes
         print("\nRegistered routes:")
@@ -2958,7 +2976,7 @@ if __name__ == '__main__':
             print(route)
             
     except Exception as e:
-        print(f"\n✗ Error registering blueprints: {e}")
+        print(f"\nError registering blueprints: {e}")
         import traceback
         traceback.print_exc()
         exit(1)

@@ -127,22 +127,6 @@ export const studentFees = Array.from({ length: 50 }, (_, i) => ({
   pendingAmount: fee.totalFee - fee.paidAmount,
 }));
 
-// Staff Payroll Mock Data
-export const staffPayroll = Array.from({ length: 30 }, (_, i) => ({
-  id: `SP${String(i + 1).padStart(4, '0')}`,
-  staffId: `STF${String(i + 101).padStart(4, '0')}`,
-  staffName: `Faculty ${i + 1}`,
-  department: DEPARTMENTS[Math.floor(Math.random() * (DEPARTMENTS.length - 1)) + 1].id.toUpperCase(),
-  role: ['Professor', 'Associate Professor', 'Assistant Professor', 'Lab Assistant'][Math.floor(Math.random() * 4)],
-  baseSalary: 50000 + Math.floor(Math.random() * 100000),
-  allowances: 5000 + Math.floor(Math.random() * 15000),
-  deductions: Math.floor(Math.random() * 5000),
-  netSalary: 0,
-  paymentDate: new Date(2024, Math.floor(Math.random() * 12), 1).toISOString(),
-})).map(payroll => ({
-  ...payroll,
-  netSalary: payroll.baseSalary + payroll.allowances - payroll.deductions,
-}));
 
 // Expenses Mock Data
 export const expenses = Array.from({ length: 40 }, (_, i) => ({

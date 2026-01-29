@@ -5,35 +5,7 @@ from supabase_client import get_supabase
 # Create blueprint
 quality_faculty_bp = Blueprint('quality_faculty', __name__)
 
-# Simple CORS decorator
-def cors_enabled(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # Handle OPTIONS requests
-        if request.method == 'OPTIONS':
-            response = jsonify({'status': 'preflight'})
-            origin = request.headers.get('Origin', 'http://localhost:3001')
-            allowed_origins = ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001']
-            if origin in allowed_origins:
-                response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-            response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-            return response
-        
-        # Handle actual requests
-        response = f(*args, **kwargs)
-        if hasattr(response, 'headers'):
-            origin = request.headers.get('Origin', 'http://localhost:3001')
-            allowed_origins = ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001']
-            if origin in allowed_origins:
-                response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
-    return decorated_function
-
 @quality_faculty_bp.route('/faculty', methods=['GET', 'OPTIONS'])
-@cors_enabled
 def get_faculty():
     """Get faculty list with pagination from Supabase"""
     try:
@@ -54,39 +26,31 @@ def get_faculty():
         if department:
             query = query.eq('department', department)
 
-        # Get total count first
-        count_result = query.execute()
-        total_items = count_result.count
-
-        # Apply pagination
+        # Get results
         offset = (page - 1) * limit
-        query = query.range(offset, offset + limit - 1)
-
-        # Execute query
-        result = query.execute()
+        result = query.range(offset, offset + limit - 1).execute()
+        total_items = result.count if hasattr(result, 'count') else 0
 
         # Transform data to match frontend expectations
         faculty = []
         for record in result.data:
             faculty.append({
-                'id': record['faculty_id'],
-                'employee_id': f'EMP{record["faculty_id"]:03d}',
-                'name': record['faculty_name'],
-                'email': f'{record["faculty_name"].lower().replace(" ", ".")}@college.edu',
-                'department': record['department'],
-                'designation': 'Professor',  # Default designation
-                'performance_rating': record['performance_rating'],
-                'research_output': record['research_papers'],
-                'student_feedback_score': record['feedback_score'],
-                'teaching_hours': 20,  # Default value
-                'publications': record['research_papers'],  # Use research_papers as publications
-                'projects': 5,  # Default value
-                'experience': 10,  # Default value
-                'qualifications': 'Ph.D.',  # Default qualification
+                'id': record.get('faculty_id'),
+                'employee_id': f"EMP{record.get('faculty_id')}",
+                'name': record.get('faculty_name'),
+                'email': f"{record.get('faculty_name', '').lower().replace(' ', '.')}@college.edu",
+                'department': record.get('department'),
+                'designation': 'Professor', # Not in quality_facultyperformance
+                'performance_rating': float(record.get('performance_rating', 0)),
+                'research_output': record.get('research_papers', 0),
+                'student_feedback_score': float(record.get('feedback_score', 0)),
+                'teaching_hours': 20,
+                'publications': record.get('research_papers', 0),
+                'projects': 0,
                 'status': 'active'
             })
 
-        total_pages = (total_items + limit - 1) // limit
+        total_pages = (total_items + limit - 1) // limit if total_items > 0 else 1
 
         return jsonify({
             'success': True,
@@ -105,35 +69,42 @@ def get_faculty():
         }), 500
 
 @quality_faculty_bp.route('/faculty/analytics', methods=['GET', 'OPTIONS'])
-@cors_enabled
 def get_faculty_analytics():
     """Get faculty analytics"""
     try:
+        supabase = get_supabase()
+        result = supabase.table('quality_facultyperformance').select('*').execute()
+        data = result.data or []
+        
+        total_faculty = len(data)
+        active_faculty = total_faculty 
+        
+        dept_dist = {}
+        desig_dist = {'Professor': total_faculty} # Mock since not in table
+        perf_dist = {'excellent': 0, 'good': 0, 'average': 0, 'needs_improvement': 0}
+        total_perf = 0
+        
+        for record in data:
+            dept = record.get('department')
+            if dept:
+                dept_dist[dept] = dept_dist.get(dept, 0) + 1
+                
+            rating = float(record.get('performance_rating', 0))
+            total_perf += rating
+            if rating >= 90: perf_dist['excellent'] += 1
+            elif rating >= 75: perf_dist['good'] += 1
+            elif rating >= 60: perf_dist['average'] += 1
+            else: perf_dist['needs_improvement'] += 1
+            
+        avg_perf = total_perf / total_faculty if total_faculty > 0 else 0
+        
         analytics = {
-            'total_faculty': 85,
-            'active_faculty': 78,
-            'faculty_by_department': {
-                'Computer Science': 25,
-                'Electronics': 20,
-                'Mechanical': 18,
-                'Civil': 12,
-                'Electrical': 10
-            },
-            'faculty_by_designation': {
-                'Professor': 15,
-                'Associate Professor': 30,
-                'Assistant Professor': 35,
-                'Lecturer': 5
-            },
-            'performance_distribution': {
-                'excellent': 20,
-                'good': 45,
-                'average': 15,
-                'needs_improvement': 5
-            },
-            'average_experience': 12.5,
-            'faculty_with_phd': 65,
-            'faculty_retention_rate': 92.5,
+            'total_faculty': total_faculty,
+            'active_faculty': active_faculty,
+            'faculty_by_department': dept_dist,
+            'faculty_by_designation': desig_dist,
+            'performance_distribution': perf_dist,
+            'average_performance': round(avg_perf, 1),
             'performance_trends': [
                 {'month': 'Jan', 'score': 85},
                 {'month': 'Feb', 'score': 87},
@@ -163,34 +134,26 @@ def get_faculty_analytics():
         }), 500
 
 @quality_faculty_bp.route('/faculty', methods=['POST', 'OPTIONS'])
-@cors_enabled
 def create_faculty():
     """Create a new faculty member and save to Supabase"""
     try:
         data = request.get_json()
         supabase = get_supabase()
 
-        # Map frontend fields to DB columns
+        # Map frontend fields to DB columns for quality_facultyperformance
         insert_data = {
             'faculty_name': data.get('name'),
             'department': data.get('department'),
-            'performance_rating': int(data.get('performance_rating', 0)),
-            'research_papers': int(data.get('research_output', data.get('publications', 0))),
-            'feedback_score': int(data.get('student_feedback_score', 0))
+            'performance_rating': float(data.get('performance_rating', 0)),
+            'research_papers': int(data.get('research_output', 0)),
+            'feedback_score': float(data.get('student_feedback_score', 0))
         }
 
         result = supabase.table('quality_facultyperformance').insert(insert_data).execute()
 
-        if hasattr(result, 'error') and result.error:
-            # Supabase client may return error object
-            err_msg = getattr(result.error, 'message', str(result.error))
-            return jsonify({'success': False, 'error': err_msg}), 400
-
-        created = result.data[0] if result.data else insert_data
-
         return jsonify({
             'success': True,
-            'data': created,
+            'data': result.data[0] if result.data else insert_data,
             'message': 'Faculty member created successfully'
         })
     except Exception as e:
@@ -199,8 +162,7 @@ def create_faculty():
             'error': str(e)
         }), 500
 
-@quality_faculty_bp.route('/faculty/<int:faculty_id>', methods=['PUT', 'OPTIONS'])
-@cors_enabled
+@quality_faculty_bp.route('/faculty/<string:faculty_id>', methods=['PUT', 'OPTIONS'])
 def update_faculty(faculty_id):
     """Update a faculty member in Supabase"""
     try:
@@ -213,26 +175,20 @@ def update_faculty(faculty_id):
         if 'department' in data:
             update_data['department'] = data.get('department')
         if 'performance_rating' in data:
-            update_data['performance_rating'] = int(data.get('performance_rating', 0))
-        if 'research_output' in data or 'publications' in data:
-            update_data['research_papers'] = int(data.get('research_output', data.get('publications', 0)))
+            update_data['performance_rating'] = float(data.get('performance_rating', 0))
+        if 'research_output' in data:
+            update_data['research_papers'] = int(data.get('research_output', 0))
         if 'student_feedback_score' in data:
-            update_data['feedback_score'] = int(data.get('student_feedback_score', 0))
+            update_data['feedback_score'] = float(data.get('student_feedback_score', 0))
 
         if not update_data:
             return jsonify({'success': False, 'error': 'No valid fields to update'}), 400
 
         result = supabase.table('quality_facultyperformance').update(update_data).eq('faculty_id', faculty_id).execute()
 
-        if hasattr(result, 'error') and result.error:
-            err_msg = getattr(result.error, 'message', str(result.error))
-            return jsonify({'success': False, 'error': err_msg}), 400
-
-        updated = result.data[0] if result.data else {'id': faculty_id, **update_data}
-
         return jsonify({
             'success': True,
-            'data': updated,
+            'data': result.data[0] if result.data else {'id': faculty_id, **update_data},
             'message': 'Faculty member updated successfully'
         })
     except Exception as e:
@@ -241,18 +197,13 @@ def update_faculty(faculty_id):
             'error': str(e)
         }), 500
 
-@quality_faculty_bp.route('/faculty/<int:faculty_id>', methods=['DELETE', 'OPTIONS'])
-@cors_enabled
+@quality_faculty_bp.route('/faculty/<string:faculty_id>', methods=['DELETE', 'OPTIONS'])
 def delete_faculty(faculty_id):
     """Delete a faculty member from Supabase"""
     try:
         supabase = get_supabase()
 
         result = supabase.table('quality_facultyperformance').delete().eq('faculty_id', faculty_id).execute()
-
-        if hasattr(result, 'error') and result.error:
-            err_msg = getattr(result.error, 'message', str(result.error))
-            return jsonify({'success': False, 'error': err_msg}), 400
 
         return jsonify({
             'success': True,

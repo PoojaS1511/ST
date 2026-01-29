@@ -1,6 +1,5 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext.jsx';
 
 // Layout
 import AdminDashboard from '../pages/admin/AdminDashboard';
@@ -90,6 +89,34 @@ import ClubGallery from '../components/admin/clubs/ClubGallery';
 import ClubAwards from '../components/admin/clubs/ClubAwards';
 import ClubForm from '../components/admin/clubs/ClubForm';
 import ResumeUpload from '../components/student/ResumeUpload';
+
+// Transport
+import TransportManagement from '../pages/admin/TransportManagement';
+import TransportDashboard from '../components/transport/TransportDashboard';
+import TransportStudentManagement from '../components/transport/StudentManagement';
+import TransportFacultyManagement from '../components/transport/FacultyManagement';
+import TransportBusManagement from '../components/transport/BusManagement';
+import TransportDriverManagement from '../components/transport/DriverManagement';
+import TransportRouteManagement from '../components/transport/RouteManagement';
+import TransportFeesManagement from '../components/transport/FeesManagement';
+import TransportAttendanceManagement from '../components/transport/AttendanceManagement';
+import TransportLiveTracking from '../components/transport/LiveTracking';
+import TransportReports from '../components/transport/Reports';
+
+// Finance
+import FinanceDashboard from '../components/finance/FinanceDashboard';
+import Expenses from '../components/finance/Expenses';
+import BudgetAllocation from '../components/finance/BudgetAllocation';
+import StaffPayroll from '../components/finance/StaffPayroll';
+import StudentFees from '../components/finance/StudentFees';
+import Vendors from '../components/finance/Vendors';
+import Maintenance from '../components/finance/Maintenance';
+
+// HR
+import HROnboarding from '../components/hr/HROnboarding';
+
+// Payroll Management
+import PayrollPage from '../pages/PayrollPage';
 import RealReportsAnalytics from '../pages/admin/analytics/RealReportsAnalytics';
 import AnalyticsDashboard from '../pages/admin/analytics/AnalyticsDashboard';
 import AdmissionAnalytics from '../pages/admin/analytics/AdmissionAnalytics';
@@ -98,45 +125,22 @@ import FeeAnalytics from '../pages/admin/analytics/FeeAnalytics';
 import EnrollmentAnalytics from '../pages/admin/analytics/EnrollmentAnalytics';
 import UtilizationAnalytics from '../pages/admin/analytics/UtilizationAnalytics';
 
-// HR Management
-import HROnboardingDashboard from '../components/hr/HROnboardingDashboard';
-import HROnboarding from '../pages/hr/HROnboarding';
-import AddEmployee from '../components/hr/AddEmployeeSimple';
-import EmployeeList from '../components/hr/EmployeeListSimple';
-
-// Quality & Accreditation Management
+// Quality Management
 import QualityDashboard from '../pages/quality/Dashboard';
-import QualityFaculty from '../pages/quality/Faculty';
+import QualityAnalytics from '../pages/quality/Analytics';
 import QualityAudits from '../pages/quality/Audits';
+import QualityFaculty from '../pages/quality/Faculty';
 import QualityGrievances from '../pages/quality/Grievances';
 import QualityPolicies from '../pages/quality/Policies';
 import QualityAccreditation from '../pages/quality/Accreditation';
-import QualityAnalytics from '../pages/quality/Analytics';
-
-
-// Transport Module
-import TransportManagement from '../pages/admin/TransportManagement';
-import TransportDashboard from '../components/transport/TransportDashboard';
-import TransportStudentManagement from '../components/transport/StudentManagement';
-import TransportFacultyManagement from '../components/transport/FacultyManagement';
-import BusManagement from '../components/transport/BusManagement';
-import DriverManagement from '../components/transport/DriverManagement';
-import RouteManagement from '../components/transport/RouteManagement';
-import TransportFeesManagement from '../components/transport/FeesManagement';
-import TransportAttendanceManagement from '../components/transport/AttendanceManagement';
-import LiveTracking from '../components/transport/LiveTracking';
-import TransportReports from '../components/transport/Reports';
-import FinanceRoutes from './FinanceRoutes.jsx';
 
 const AdminRoutes = () => {
-  const { isAuthenticated } = useAuth();
-
   return (
     <Routes>
       <Route element={<AdminDashboard />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminOverview />} />
-
+        
         {/* Student Management */}
         <Route path="students">
           <Route index element={<StudentManagement />} />
@@ -144,7 +148,7 @@ const AdminRoutes = () => {
           <Route path=":id/edit" element={<AddStudent />} />
           <Route path="credentials" element={<StudentCredentials />} />
         </Route>
-
+        
         {/* Fees Management */}
         <Route path="fees">
           <Route index element={<FeesList />} />
@@ -154,16 +158,16 @@ const AdminRoutes = () => {
           <Route path="payments/new" element={<PaymentForm />} />
           <Route path=":id/pay" element={<PaymentForm />} />
         </Route>
-
+        
         {/* Notifications */}
         <Route path="notifications" element={<NotificationManagement />} />
-
+        
         {/* Faculty Management */}
         <Route path="faculty">
-          <Route index element={isAuthenticated ? <FacultyDashboard /> : <Navigate to="/login" />} />
-          <Route path="dashboard" element={isAuthenticated ? <FacultyDashboard /> : <Navigate to="/login" />} />
-          <Route path="management" element={isAuthenticated ? <FacultyManagement /> : <Navigate to="/login" />} />
-          <Route path="attendance" element={isAuthenticated ? <FacultyAttendance /> : <Navigate to="/login" />} />
+          <Route index element={<FacultyDashboard />} />
+          <Route path="dashboard" element={<FacultyDashboard />} />
+          <Route path="management" element={<FacultyManagement />} />
+          <Route path="attendance" element={<FacultyAttendance />} />
         </Route>
         
         {/* Test Route */}
@@ -259,9 +263,6 @@ const AdminRoutes = () => {
         {/* AI Assistant */}
         <Route path="ai-assistant" element={<AIAssistant />} />
         
-        {/* Finance Module */}
-        <Route path="finance/*" element={<FinanceRoutes />} />
-        
         {/* Settings */}
         <Route path="settings" element={<Settings />} />
         
@@ -309,40 +310,51 @@ const AdminRoutes = () => {
           <Route path=":clubId/edit" element={<ClubForm />} />
         </Route>
 
-        {/* Quality & Accreditation */}
+        {/* Transport Management */}
+        <Route path="transport" element={<TransportManagement />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<TransportDashboard />} />
+          <Route path="students" element={<TransportStudentManagement />} />
+          <Route path="faculty" element={<TransportFacultyManagement />} />
+          <Route path="buses" element={<TransportBusManagement />} />
+          <Route path="drivers" element={<TransportDriverManagement />} />
+          <Route path="routes" element={<TransportRouteManagement />} />
+          <Route path="fees" element={<TransportFeesManagement />} />
+          <Route path="attendance" element={<TransportAttendanceManagement />} />
+          <Route path="tracking" element={<TransportLiveTracking />} />
+          <Route path="reports" element={<TransportReports />} />
+        </Route>
+
+        {/* Finance Management */}
+        <Route path="finance">
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<FinanceDashboard />} />
+          <Route path="student-fees" element={<StudentFees />} />
+          <Route path="staff-payroll" element={<StaffPayroll />} />
+          <Route path="expenses" element={<Expenses />} />
+          <Route path="vendors" element={<Vendors />} />
+          <Route path="budget" element={<BudgetAllocation />} />
+          <Route path="maintenance" element={<Maintenance />} />
+          <Route path="ai-assistant" element={<AIAssistant />} />
+        </Route>
+
+        {/* Quality Management */}
         <Route path="quality">
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<QualityDashboard />} />
           <Route path="faculty" element={<QualityFaculty />} />
+          <Route path="analytics" element={<QualityAnalytics />} />
           <Route path="audits" element={<QualityAudits />} />
           <Route path="grievances" element={<QualityGrievances />} />
           <Route path="policies" element={<QualityPolicies />} />
           <Route path="accreditation" element={<QualityAccreditation />} />
-          <Route path="analytics" element={<QualityAnalytics />} />
         </Route>
 
+        {/* HR Onboarding */}
+        <Route path="hr/*" element={<HROnboarding />} />
 
-        {/* Transport Management Module */}
-        <Route path="transport" element={<TransportManagement />}>
-          <Route index element={<TransportDashboard />} />
-          <Route path="students" element={<TransportStudentManagement />} />
-          <Route path="faculty" element={<TransportFacultyManagement />} />
-          <Route path="buses" element={<BusManagement />} />
-          <Route path="drivers" element={<DriverManagement />} />
-          <Route path="routes" element={<RouteManagement />} />
-          <Route path="fees" element={<TransportFeesManagement />} />
-          <Route path="attendance" element={<TransportAttendanceManagement />} />
-          <Route path="tracking" element={<LiveTracking />} />
-          <Route path="reports" element={<TransportReports />} />
-        </Route>
-
-        {/* HR Management Module */}
-        <Route path="hr">
-          <Route index element={<HROnboardingDashboard />} />
-          <Route path="dashboard" element={<HROnboardingDashboard />} />
-          <Route path="add-employee" element={<AddEmployee />} />
-          <Route path="employees" element={<EmployeeList />} />
-        </Route>
+        {/* Payroll Management */}
+        <Route path="payroll" element={<PayrollPage />} />
 
         {/* Test Component */}
         <Route path="test" element={<TestComponent />} />

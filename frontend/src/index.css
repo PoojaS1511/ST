@@ -229,10 +229,10 @@
     @apply relative z-20;
   }
 
-  /* Prevent content overflow */
-  .content-wrapper {
+  /* Prevent content overflow - REMOVED */
+  /* .content-wrapper {
     @apply overflow-hidden;
-  }
+  } */
 
   /* Smooth Scrolling */
   html {
@@ -257,4 +257,24 @@
   ::-webkit-scrollbar-thumb:hover {
     background: #2563eb;
   }
+}
+
+/* Admin Sidebar Custom Scrollbar */
+.admin-sidebar-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.admin-sidebar-scrollbar::-webkit-scrollbar-track {
+  background: rgba(29, 57, 94, 0.9);
+  border-radius: 10px;
+}
+
+.admin-sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #2d4b7c;
+  border-radius: 10px;
+  border: 1px solid #3a5a8c;
+}
+
+.admin-sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #3a5a8c;
 }

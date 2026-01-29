@@ -42,14 +42,27 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 # Admin client for auth operations (uses service role key)
 supabase_admin: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-def get_supabase(admin: bool = False) -> Client:
+def get_supabase(admin: bool = False, token: str = None) -> Client:
     """
     Get the appropriate Supabase client instance.
-    
+
     Args:
         admin (bool): If True, returns the admin client with service role.
                      If False, returns the regular client with anon key.
+        token (str): Optional JWT token for authenticated requests.
     Returns:
         Client: The appropriate Supabase client instance
     """
-    return supabase_admin if admin else supabase
+    if admin:
+        return supabase_admin
+    elif token:
+        # Create a new client instance with the user's JWT token
+        return create_client(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            'global': {
+                'headers': {
+                    'Authorization': f'Bearer {token}'
+                }
+            }
+        })
+    else:
+        return supabase

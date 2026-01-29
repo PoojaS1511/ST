@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useEffect, useRef, useState, startTransition } from 'react';
 
 // Import the optimized hero section directly (not lazy loaded since it's critical for LCP)
-import OptimizedHeroSection from '../components/home/OptimizedHeroSection';
+import OptimizedHeroSection from '../components/home/OptimizedHeroSection-fixed';
 const AboutSection = lazy(() => import('../components/home/AboutSection'));
 const FeaturedPrograms = lazy(() => import('../components/home/FeaturedPrograms'));
 const WhyChooseUs = lazy(() => import('../components/home/WhyChooseUs'));

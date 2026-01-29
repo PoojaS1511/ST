@@ -186,9 +186,9 @@ const createTransportTables = async () => {
           )`
       },
       {
-        name: 'live_locations',
+        name: 'transport_live_locations',
         sql: `
-          CREATE TABLE IF NOT EXISTS live_locations (
+          CREATE TABLE IF NOT EXISTS transport_live_locations (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
             bus_id VARCHAR(50) NOT NULL,
             bus_number VARCHAR(20) NOT NULL,
@@ -206,6 +206,8 @@ const createTransportTables = async () => {
     // Create transport tables one by one
     for (const table of transportTables) {
       console.log(`📊 Creating ${table.name} table...`);
+      // Force recreation by dropping first
+      await executeSQL(`DROP TABLE IF EXISTS ${table.name} CASCADE`);
       const { error } = await executeSQL(table.sql);
       
       if (error) {
@@ -229,7 +231,7 @@ const createTransportTables = async () => {
       'CREATE INDEX IF NOT EXISTS idx_transport_students_student_id ON transport_students(student_id);',
       'CREATE INDEX IF NOT EXISTS idx_transport_faculty_faculty_id ON transport_faculty(faculty_id);',
       'CREATE INDEX IF NOT EXISTS idx_transport_attendance_date ON transport_attendance(date);',
-      'CREATE INDEX IF NOT EXISTS idx_live_locations_bus_id ON live_locations(bus_id);'
+      'CREATE INDEX IF NOT EXISTS idx_transport_live_locations_bus_id ON transport_live_locations(bus_id);'
     ];
 
     for (const indexSql of indexes) {

@@ -35,6 +35,12 @@ export async function logError({ error, info, level } = {}) {
       // ignore localStorage errors
     }
 
+    // Temporarily disable remote logging to avoid 404 errors
+    console.log('Error logging disabled:', payload.message);
+    return;
+    
+    // Original logging code (commented out)
+    /*
     // Use sendBeacon when possible for reliability during unload/fatal errors
     if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
       const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
@@ -47,6 +53,7 @@ export async function logError({ error, info, level } = {}) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+    */
   } catch (e) {
     // If logging fails, don't throw further errors
     // eslint-disable-next-line no-console

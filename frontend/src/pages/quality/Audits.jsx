@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { FileText, Plus, Edit, Trash2, Search, Filter, TrendingUp, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { API_URL } from '../../config';
+import { getAuthHeaders } from '../../utils/auth';
 
 const Audits = () => {
   const [audits, setAudits] = useState([]);
@@ -43,9 +44,9 @@ const Audits = () => {
         ...(filterType && { audit_type: filterType })
       });
 
-      const response = await fetch(`${API_URL}/quality/audits?${params}`, {
+      const response = await fetch(`${API_URL}/api/quality/audits?${params}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json'
         }
       });
       const data = await response.json();
@@ -63,9 +64,9 @@ const Audits = () => {
 
   const fetchAuditAnalytics = async () => {
     try {
-      const response = await fetch(`${API_URL}/quality/audits/analytics`, {
+      const response = await fetch(`${API_URL}/api/quality/audits/analytics`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json'
         }
       });
       const data = await response.json();
@@ -81,18 +82,15 @@ const Audits = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const url = editingAudit 
-        ? `${API_URL}/quality/audits/${editingAudit.id}`
-        : `${API_URL}/quality/audits`;
+      const url = editingAudit
+        ? `${API_URL}/api/quality/audits/${editingAudit.id}`
+        : `${API_URL}/api/quality/audits`;
       
       const method = editingAudit ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(formData)
       });
 
@@ -126,11 +124,9 @@ const Audits = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this audit?')) {
       try {
-        const response = await fetch(`${API_URL}/quality/audits/${id}`, {
+        const response = await fetch(`${API_URL}/api/quality/audits/${id}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+          headers: getAuthHeaders()
         });
 
         const data = await response.json();

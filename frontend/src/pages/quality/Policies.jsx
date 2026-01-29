@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { getAuthHeaders } from '../../utils/auth';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { FileText, Plus, Edit, Trash2, Search, Filter, AlertTriangle, CheckCircle, Clock, Calendar, Shield } from 'lucide-react';
 
 const Policies = () => {
   const [policies, setPolicies] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,6 +35,8 @@ const Policies = () => {
   const fetchPolicies = async () => {
     try {
       setLoading(true);
+      setError(null);
+
       const params = new URLSearchParams({
         page: currentPage,
         limit: 10,
@@ -41,20 +45,34 @@ const Policies = () => {
         ...(filterStatus && { compliance_status: filterStatus })
       });
 
-      const response = await fetch(`${API_URL}/quality/policies`, {
-        params,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const apiUrl = `${API_URL}/api/quality/policies?${params}`;
+      console.log('Fetching policies from:', apiUrl);
+
+      const response = await fetch(apiUrl);
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
+      console.log('API Response:', data);
 
       if (data.success) {
-        setPolicies(data.data);
-        setTotalPages(data.pagination.totalPages);
+        console.log('Setting policies:', data.data?.length || 0, 'items');
+        setPolicies(data.data || []);
+        setTotalPages(data.pagination?.totalPages || 1);
+      } else {
+        console.error('API returned success=false:', data);
+        setError('API returned error: ' + JSON.stringify(data));
+        setPolicies([]);
+        setTotalPages(1);
       }
     } catch (error) {
       console.error('Error fetching policies:', error);
+      setError('Failed to fetch policies: ' + error.message);
+      setPolicies([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -62,11 +80,7 @@ const Policies = () => {
 
   const fetchPolicyAnalytics = async () => {
     try {
-      const response = await fetch(`${API_URL}/quality/policies/analytics`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await fetch(`${API_URL}/api/quality/policies/analytics`);
       const data = await response.json();
 
       if (data.success) {
@@ -80,18 +94,15 @@ const Policies = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const url = editingPolicy 
-        ? `${API_URL}/quality/policies/${editingPolicy.id}`
-        : `${API_URL}/quality/policies`;
+      const url = editingPolicy
+        ? `${API_URL}/api/quality/policies/${editingPolicy.id}`
+        : `${API_URL}/api/quality/policies`;
       
       const method = editingPolicy ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(formData)
       });
 
@@ -125,11 +136,9 @@ const Policies = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this policy?')) {
       try {
-        const response = await fetch(`${API_URL}/quality/policies/${id}`, {
+        const response = await fetch(`${API_URL}/api/quality/policies/${id}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+          headers: getAuthHeaders()
         });
 
         const data = await response.json();
@@ -329,68 +338,76 @@ const Policies = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {policies.map((policy) => (
-                <tr key={policy.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{policy.title}</div>
-                    <div className="text-sm text-gray-500">{policy.category}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {policy.department}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {getStatusIcon(policy.compliance_status)}
-                      <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(policy.compliance_status)}`}>
-                        {policy.compliance_status.replace('_', ' ')}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <Shield className="w-4 h-4 text-gray-400 mr-2" />
-                      <span className={`text-sm font-medium ${getComplianceColor(policy.compliance_score)}`}>
-                        {policy.compliance_score}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 text-gray-400 mr-2" />
-                      <div>
-                        <div className="text-sm text-gray-900">
-                          {new Date(policy.next_review_date).toLocaleDateString()}
-                        </div>
-                        <div className={`text-xs font-medium ${
-                          getDaysUntilDeadline(policy.next_review_date) <= 7 ? 'text-red-600' : 
-                          getDaysUntilDeadline(policy.next_review_date) <= 30 ? 'text-yellow-600' : 'text-green-600'
-                        }`}>
-                          {getDaysUntilDeadline(policy.next_review_date)} days left
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {policy.responsible_person}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEdit(policy)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(policy.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+              {policies.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                    {loading ? 'Loading policies...' : 'No policies found. Check console for API response details.'}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                policies.map((policy) => (
+                  <tr key={policy.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{policy.title}</div>
+                      <div className="text-sm text-gray-500">{policy.category}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {policy.department}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {getStatusIcon(policy.compliance_status)}
+                        <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(policy.compliance_status)}`}>
+                          {policy.compliance_status?.replace('_', ' ') || 'Unknown'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <Shield className="w-4 h-4 text-gray-400 mr-2" />
+                        <span className={`text-sm font-medium ${getComplianceColor(policy.compliance_score || 0)}`}>
+                          {policy.compliance_score || 0}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <Calendar className="w-4 h-4 text-gray-400 mr-2" />
+                        <div>
+                          <div className="text-sm text-gray-900">
+                            {policy.next_review_date ? new Date(policy.next_review_date).toLocaleDateString() : 'N/A'}
+                          </div>
+                          <div className={`text-xs font-medium ${
+                            policy.next_review_date && getDaysUntilDeadline(policy.next_review_date) <= 7 ? 'text-red-600' :
+                            policy.next_review_date && getDaysUntilDeadline(policy.next_review_date) <= 30 ? 'text-yellow-600' : 'text-green-600'
+                          }`}>
+                            {policy.next_review_date ? `${getDaysUntilDeadline(policy.next_review_date)} days left` : ''}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {policy.responsible_person || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleEdit(policy)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(policy.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

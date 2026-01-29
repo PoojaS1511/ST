@@ -6,11 +6,13 @@ exports.getAllPolicies = async (req, res) => {
     const { page = 1, limit = 10, department, compliance_status } = req.query;
     
     let query = supabase
-      .from('policies')
+      .from('quality_policy')
       .select('*', { count: 'exact' })
-      .order('next_review_date', { ascending: true });
+      .order('next_due_date', { ascending: true });
 
-    if (department) query = query.eq('department', department);
+    if (department && department !== 'All Departments') {
+      query = query.eq('responsible_department', department);
+    }
     if (compliance_status) query = query.eq('compliance_status', compliance_status);
 
     const from = (page - 1) * limit;
@@ -41,17 +43,9 @@ exports.getAllPolicies = async (req, res) => {
 
 exports.addPolicy = async (req, res) => {
   try {
-    const policyData = {
-      ...req.body,
-      compliance_status: 'pending_review',
-      last_reviewed: new Date().toISOString(),
-      compliance_score: req.body.compliance_score || 0,
-      documents: req.body.documents || []
-    };
-
     const { data, error } = await supabase
-      .from('policies')
-      .insert([policyData])
+      .from('quality_policy')
+      .insert([req.body])
       .select();
 
     if (error) throw error;
@@ -75,9 +69,9 @@ exports.updatePolicy = async (req, res) => {
     const { id } = req.params;
     
     const { data, error } = await supabase
-      .from('policies')
+      .from('quality_policy')
       .update(req.body)
-      .eq('id', id)
+      .eq('policy_id', id)
       .select();
 
     if (error) throw error;
@@ -108,9 +102,9 @@ exports.deletePolicy = async (req, res) => {
     const { id } = req.params;
     
     const { error } = await supabase
-      .from('policies')
+      .from('quality_policy')
       .delete()
-      .eq('id', id);
+      .eq('policy_id', id);
 
     if (error) throw error;
 
@@ -130,10 +124,10 @@ exports.deletePolicy = async (req, res) => {
 exports.getNonCompliantPolicies = async (req, res) => {
   try {
     const { data, error } = await supabase
-      .from('policies')
+      .from('quality_policy')
       .select('*')
-      .eq('compliance_status', 'non_compliant')
-      .order('due_date', { ascending: true });
+      .eq('compliance_status', 'Non-Compliant')
+      .order('next_due_date', { ascending: true });
 
     if (error) throw error;
 
@@ -155,10 +149,10 @@ exports.getPoliciesDueForReview = async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     
     const { data, error } = await supabase
-      .from('policies')
+      .from('quality_policy')
       .select('*')
-      .lte('next_review_date', today)
-      .order('next_review_date', { ascending: true });
+      .lte('next_due_date', today)
+      .order('next_due_date', { ascending: true });
 
     if (error) throw error;
 
@@ -177,7 +171,7 @@ exports.getPoliciesDueForReview = async (req, res) => {
 
 exports.getPolicyAnalytics = async (req, res) => {
   try {
-    // Compliance trends
+    // Compliance trends (mock)
     const complianceTrends = [
       { month: 'Jan', rate: 80 },
       { month: 'Feb', rate: 82 },
@@ -187,14 +181,15 @@ exports.getPolicyAnalytics = async (req, res) => {
       { month: 'Jun', rate: 92 }
     ];
 
-    // Policy-wise compliance status
-    const { data: policyData } = await supabase
-      .from('policies')
-      .select('title, compliance_status');
+    const { data: policyData, error } = await supabase
+      .from('quality_policy')
+      .select('*');
+
+    if (error) throw error;
 
     const policyCompliance = policyData ? 
       policyData.map(policy => ({
-        policy: policy.title,
+        policy: policy.policy_name,
         status: policy.compliance_status
       })) : [];
 
@@ -202,18 +197,14 @@ exports.getPolicyAnalytics = async (req, res) => {
     const today = new Date();
     const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    const { data: deadlineData } = await supabase
-      .from('policies')
-      .select('title, next_review_date')
-      .gte('next_review_date', today.toISOString())
-      .lte('next_review_date', thirtyDaysFromNow.toISOString())
-      .order('next_review_date', { ascending: true });
-
-    const upcomingDeadlines = deadlineData ? 
-      deadlineData.map(policy => {
-        const daysLeft = Math.ceil((new Date(policy.next_review_date) - today) / (1000 * 60 * 60 * 24));
+    const upcomingDeadlines = policyData ? 
+      policyData.filter(policy => {
+        const dueDate = new Date(policy.next_due_date);
+        return dueDate >= today && dueDate <= thirtyDaysFromNow;
+      }).map(policy => {
+        const daysLeft = Math.ceil((new Date(policy.next_due_date) - today) / (1000 * 60 * 60 * 24));
         return {
-          policy: policy.title,
+          policy: policy.policy_name,
           days_left: daysLeft
         };
       }) : [];

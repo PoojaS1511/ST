@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { fetchStudentById, updateStudent } from '../../services/studentService';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 import { PencilIcon, ArrowLeftIcon, EnvelopeIcon, PhoneIcon, HomeIcon, AcademicCapIcon, CalendarIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 
 const StudentDetails = () => {

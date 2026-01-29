@@ -6,35 +6,7 @@ from supabase_client import get_supabase
 # Create blueprint
 quality_policies_bp = Blueprint('quality_policies', __name__)
 
-# Simple CORS decorator
-def cors_enabled(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # Handle OPTIONS requests
-        if request.method == 'OPTIONS':
-            response = jsonify({'status': 'preflight'})
-            origin = request.headers.get('Origin', 'http://localhost:3001')
-            allowed_origins = ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001']
-            if origin in allowed_origins:
-                response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-            response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-            return response
-        
-        # Handle actual requests
-        response = f(*args, **kwargs)
-        if hasattr(response, 'headers'):
-            origin = request.headers.get('Origin', 'http://localhost:3001')
-            allowed_origins = ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001']
-            if origin in allowed_origins:
-                response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
-    return decorated_function
-
 @quality_policies_bp.route('/policies', methods=['GET', 'OPTIONS'])
-@cors_enabled
 def get_policies():
     """Get quality policies from Supabase"""
     try:
@@ -55,42 +27,30 @@ def get_policies():
 
         # Apply filters
         if search:
-            query = query.or_(f"policy_name.ilike.%{search}%,department.ilike.%{search}%,responsible_person.ilike.%{search}%")
+            query = query.or_(f"policy_name.ilike.%{search}%,responsible_department.ilike.%{search}%")
         if category_filter:
-            query = query.eq('category', category_filter)
+            # Table doesn't have category, ignoring for now or mapping if possible
+            pass
         if status_filter:
             query = query.eq('compliance_status', status_filter)
 
-        # Get total count for pagination
-        total_query = query
-        total_result = supabase.table('quality_policy').select('*', count='exact').execute()
-        total_count = total_result.count if hasattr(total_result, 'count') else 0
-
-        # Apply pagination
-        query = query.range(offset, offset + limit - 1)
-
-        # Execute query
-        result = query.execute()
-
-        if not hasattr(result, 'data'):
-            return jsonify({
-                'success': False,
-                'error': 'Failed to fetch data from Supabase'
-            }), 500
+        # Execute query with pagination
+        result = query.range(offset, offset + limit - 1).execute()
+        total_count = result.count if hasattr(result, 'count') else 0
 
         # Map database fields to frontend expected fields
         policies = []
-        for policy in result.data:
+        for policy in (result.data or []):
             mapped_policy = {
                 'id': policy.get('policy_id'),
                 'title': policy.get('policy_name', ''),
-                'description': policy.get('description', ''),
-                'category': policy.get('category', 'General'),
-                'department': policy.get('department', ''),
-                'compliance_status': policy.get('compliance_status', 'pending'),
-                'compliance_score': policy.get('compliance_score', 0),
+                'description': f"Policy for {policy.get('responsible_department', 'the department')}",
+                'category': 'General',
+                'department': policy.get('responsible_department', ''),
+                'compliance_status': policy.get('compliance_status', 'pending_review'),
+                'compliance_score': 85.0, # Default if not in table
                 'next_review_date': policy.get('next_due_date', ''),
-                'responsible_person': policy.get('responsible_person', '')
+                'responsible_person': 'HOD' # Default if not in table
             }
             policies.append(mapped_policy)
 
@@ -108,14 +68,12 @@ def get_policies():
         })
 
     except Exception as e:
-        print(f"Error fetching policies: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
 
 @quality_policies_bp.route('/policies/analytics', methods=['GET', 'OPTIONS'])
-@cors_enabled
 def get_policies_analytics():
     """Get policy analytics"""
     try:
@@ -123,9 +81,9 @@ def get_policies_analytics():
 
         # Get all policies for analytics
         result = supabase.table('quality_policy').select('*').execute()
+        data = result.data or []
 
-        if not result.data:
-            # Return mock analytics if no data
+        if not data:
             analytics = {
                 'compliance_trends': [
                     {'month': 'Jan', 'rate': 80},
@@ -139,11 +97,9 @@ def get_policies_analytics():
                 'policy_compliance': []
             }
         else:
-            # Calculate real analytics from data
-            from datetime import datetime, timedelta
-            import random
-
-            # Compliance trends (mock for now, could be calculated from historical data)
+            from datetime import datetime
+            
+            # Compliance trends (mock for now)
             compliance_trends = [
                 {'month': 'Jan', 'rate': 80},
                 {'month': 'Feb', 'rate': 82},
@@ -153,28 +109,28 @@ def get_policies_analytics():
                 {'month': 'Jun', 'rate': 92}
             ]
 
-            # Upcoming deadlines - get policies with next_due_date within 60 days
+            # Upcoming deadlines
             upcoming_deadlines = []
             today = datetime.now().date()
 
-            for policy in result.data[:10]:  # Limit to first 10 for display
+            for policy in data:
                 try:
-                    due_date = datetime.strptime(policy['next_due_date'], '%Y-%m-%d').date()
-                    days_left = (due_date - today).days
-                    if 0 <= days_left <= 60:  # Only show upcoming or slightly overdue
-                        upcoming_deadlines.append({
-                            'policy': policy['policy_name'],
-                            'days_left': max(0, days_left)
-                        })
+                    if policy.get('next_due_date'):
+                        due_date = datetime.strptime(policy['next_due_date'], '%Y-%m-%d').date()
+                        days_left = (due_date - today).days
+                        if 0 <= days_left <= 60:
+                            upcoming_deadlines.append({
+                                'policy': policy['policy_name'],
+                                'days_left': max(0, days_left)
+                            })
                 except (ValueError, KeyError):
                     continue
 
-            # Sort by days left
             upcoming_deadlines.sort(key=lambda x: x['days_left'])
 
             # Policy compliance status
             policy_compliance = []
-            for policy in result.data[:10]:  # Limit to first 10
+            for policy in data[:10]:
                 policy_compliance.append({
                     'policy': policy['policy_name'],
                     'status': policy['compliance_status']
@@ -182,7 +138,7 @@ def get_policies_analytics():
 
             analytics = {
                 'compliance_trends': compliance_trends,
-                'upcoming_deadlines': upcoming_deadlines,
+                'upcoming_deadlines': upcoming_deadlines[:5],
                 'policy_compliance': policy_compliance
             }
 

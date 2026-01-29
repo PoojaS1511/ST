@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
+import { getAuthHeaders } from '../../utils/auth';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { AlertTriangle, Plus, Edit, Trash2, Search, Filter, MessageSquare, Clock, CheckCircle, User, Send } from 'lucide-react';
 
@@ -40,19 +41,41 @@ const Grievances = () => {
         ...(filterUserType && { user_type: filterUserType })
       });
 
-      const response = await fetch(`/api/quality/grievances?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      const response = await fetch(`${API_URL}/api/quality/grievances?${params}`, {
+        headers: getAuthHeaders()
       });
       const data = await response.json();
 
       if (data.success) {
         setGrievances(data.data);
         setTotalPages(data.pagination.totalPages);
+      } else {
+        console.error('API returned error:', data.error);
       }
     } catch (error) {
       console.error('Error fetching grievances:', error);
+      // Try without auth headers as fallback
+      try {
+        console.log('Trying without auth headers...');
+        const params = new URLSearchParams({
+          page: currentPage,
+          limit: 10,
+          ...(searchTerm && { search: searchTerm }),
+          ...(filterStatus && { status: filterStatus }),
+          ...(filterCategory && { category: filterCategory }),
+          ...(filterUserType && { user_type: filterUserType })
+        });
+
+        const response = await fetch(`${API_URL}/api/quality/grievances?${params}`);
+        const data = await response.json();
+
+        if (data.success) {
+          setGrievances(data.data);
+          setTotalPages(data.pagination.totalPages);
+        }
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+      }
     } finally {
       setLoading(false);
     }
@@ -60,10 +83,8 @@ const Grievances = () => {
 
   const fetchGrievanceAnalytics = async () => {
     try {
-      const response = await fetch(`/api/quality/grievances/analytics`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      const response = await fetch(`${API_URL}/api/quality/grievances/analytics`, {
+        headers: getAuthHeaders()
       });
       const data = await response.json();
 
@@ -78,12 +99,9 @@ const Grievances = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`/api/quality/grievances`, {
+      const response = await fetch(`${API_URL}/api/quality/grievances`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(formData)
       });
 
@@ -107,12 +125,9 @@ const Grievances = () => {
 
   const handleUpdate = async (id, updateData) => {
     try {
-      const response = await fetch(`/api/quality/grievances/${id}`, {
+      const response = await fetch(`${API_URL}/api/quality/grievances/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(updateData)
       });
 
@@ -129,11 +144,9 @@ const Grievances = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this grievance?')) {
       try {
-        const response = await fetch(`/api/quality/grievances/${id}`, {
+        const response = await fetch(`${API_URL}/api/quality/grievances/${id}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+          headers: getAuthHeaders()
         });
 
         const data = await response.json();

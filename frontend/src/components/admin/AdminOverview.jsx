@@ -15,7 +15,7 @@ import {
   Cog6ToothIcon,
   QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline';
-import { Box, Typography, Paper, CircularProgress } from '@mui/material';
+import { Box, Typography, Paper, CircularProgress, Button } from '@mui/material';
 import { API_URL } from '../../config';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -33,11 +33,11 @@ const COLORS = {
 
 // Default data for when API is not available
 const DEFAULT_STATS = [
-  { name: 'Total Students', value: '1,250', icon: UserGroupIcon, color: 'blue' },
-  { name: 'Male', value: '750', icon: UserIcon, color: 'indigo' },
-  { name: 'Female', value: '500', icon: UserCircleIcon, color: 'pink' },
-  { name: 'Departments', value: '6', icon: BuildingOfficeIcon, color: 'purple' },
-  { name: 'Faculty Members', value: '85', icon: AcademicCapIcon, color: 'green' },
+  { name: 'Total Staff', value: '150', icon: UserGroupIcon, color: 'blue' },
+  { name: 'Monthly Payroll', value: '₹2,50,000', icon: CurrencyDollarIcon, color: 'green' },
+  { name: 'Active Employees', value: '145', icon: UserIcon, color: 'indigo' },
+  { name: 'Departments', value: '8', icon: BuildingOfficeIcon, color: 'purple' },
+  { name: 'Pending Payments', value: '12', icon: ExclamationTriangleIcon, color: 'red' },
 ];
 
 const QUICK_ACTIONS = [
@@ -319,22 +319,22 @@ const AdminOverview = () => {
     try {
       setLoading(true);
       setError(null);
-      
-      const statsEndpoint = `${API_URL}/students/stats`;
+
+      const statsEndpoint = `${API_URL}/api/admin/dashboard`;
       console.log('Fetching stats from:', statsEndpoint);
-      
+
       // First, ensure we have a valid session
       const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-      
+
       if (sessionError || !currentSession?.access_token) {
         console.error('No valid session:', sessionError?.message || 'No access token');
         throw new Error('Session expired. Please log in again.');
       }
-      
+
       // Get the token directly from localStorage as a fallback
       const sessionStr = localStorage.getItem('sb-qkaaoeismqnhjyikgkme-auth-token');
       let token = currentSession.access_token;
-      
+
       if (sessionStr) {
         try {
           const sessionData = JSON.parse(sessionStr);
@@ -345,9 +345,9 @@ const AdminOverview = () => {
           console.warn('Error parsing session data from localStorage:', e);
         }
       }
-      
+
       console.log('Using access token:', token ? '***' + token.slice(-8) : 'none');
-      
+
       // Make the request with the token
       const response = await fetch(statsEndpoint, {
         method: 'GET',
@@ -358,23 +358,23 @@ const AdminOverview = () => {
         },
         credentials: 'include'
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Error response:', errorText);
-        
+
         // Handle 401 Unauthorized
         if (response.status === 401) {
           // Try to refresh the session
           console.log('Session may be expired, attempting to refresh...');
           const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
-          
+
           if (refreshError || !newSession?.access_token) {
             console.error('Failed to refresh session:', refreshError?.message || 'No session data');
             await supabase.auth.signOut();
             throw new Error('Your session has expired. Please log in again.');
           }
-          
+
           // Retry with the new token
           console.log('Retrying with new token...');
           const retryResponse = await fetch(statsEndpoint, {
@@ -386,17 +386,17 @@ const AdminOverview = () => {
             },
             credentials: 'include'
           });
-          
+
           if (!retryResponse.ok) {
             const retryError = await retryResponse.text();
             throw new Error(`Failed to load stats: ${retryError}`);
           }
-          
+
           const retryData = await retryResponse.json();
           setStats(formatStats(retryData.data || retryData));
           return;
         }
-        
+
         // Handle 422 Unprocessable Entity (signature verification failed)
         if (response.status === 422) {
           console.warn('Token validation failed, signing out...');
@@ -404,27 +404,27 @@ const AdminOverview = () => {
           window.location.href = '/login';
           return;
         }
-        
+
         throw new Error(`Failed to load stats: ${errorText}`);
       }
-      
+
       const data = await response.json();
       console.log('Stats data received:', data);
-      
+
       if (!data) {
         throw new Error('No data received from server');
       }
-      
+
       setStats(formatStats(data.data || data));
-      
+
     } catch (error) {
       console.error('Failed to fetch stats:', error);
       setError(error.message || 'Failed to load statistics. Please try again later.');
       setStats(DEFAULT_STATS);
-      
+
       // If it's an auth error, redirect to login
-      if (error.message.includes('session') || 
-          error.message.includes('auth') || 
+      if (error.message.includes('session') ||
+          error.message.includes('auth') ||
           error.message.includes('token') ||
           error.message.includes('401') ||
           error.message.includes('422')) {

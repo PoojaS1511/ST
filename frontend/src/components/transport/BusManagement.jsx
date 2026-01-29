@@ -21,9 +21,10 @@ import {
   Chip,
   MenuItem,
   CircularProgress,
-  Alert
+  Alert,
+  TablePagination
 } from '@mui/material';
-import { Search, Plus, Edit, Trash2, X, Bus } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, X, Bus, ChevronLeft, ChevronRight } from 'lucide-react';
 import TransportService from '../../services/transportService';
 
 const BusManagement = () => {
@@ -32,13 +33,20 @@ const BusManagement = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [pagination, setPagination] = useState({
+    page: 0,
+    rowsPerPage: 10,
+    total: 0
+  });
   const [openDialog, setOpenDialog] = useState(false);
   const [editingBus, setEditingBus] = useState(null);
   const [formData, setFormData] = useState({
     bus_number: '',
     route_id: '',
+    route_name: '',
     capacity: 40,
     driver_id: '',
+    driver_name: '',
     status: 'Active',
     last_service: '',
     next_service: '',
@@ -46,16 +54,33 @@ const BusManagement = () => {
 
   useEffect(() => {
     loadBuses();
-  }, []);
+  }, [pagination.page, pagination.rowsPerPage, filterStatus, searchTerm]);
 
   const loadBuses = async () => {
     try {
       setLoading(true);
-      const result = await TransportService.getBuses();
+      const params = {
+        page: pagination.page + 1,
+        limit: pagination.rowsPerPage
+      };
+
+      if (filterStatus !== 'All') {
+        params.status = filterStatus;
+      }
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+
+      const result = await TransportService.getBuses(params);
       if (!result.success) {
         throw new Error(result.error);
       }
       setBuses(result.data);
+      setPagination(prev => ({
+        ...prev,
+        total: result.total || 0
+      }));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -63,25 +88,41 @@ const BusManagement = () => {
     }
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setPagination(prev => ({
+      ...prev,
+      rowsPerPage: parseInt(event.target.value, 10),
+      page: 0
+    }));
+  };
+
   const handleOpenDialog = (bus = null) => {
     if (bus) {
       setEditingBus(bus);
       setFormData({
         bus_number: bus.bus_number,
-        route_id: bus.route_id,
+        route_id: bus.route_id || '',
+        route_name: bus.route_name || '',
         capacity: bus.capacity,
-        driver_id: bus.driver_id,
+        driver_id: bus.driver_id || '',
+        driver_name: bus.driver_name || '',
         status: bus.status,
-        last_service: bus.last_service,
-        next_service: bus.next_service,
+        last_service: bus.last_service || '',
+        next_service: bus.next_service || '',
       });
     } else {
       setEditingBus(null);
       setFormData({
         bus_number: '',
         route_id: '',
+        route_name: '',
         capacity: 40,
         driver_id: '',
+        driver_name: '',
         status: 'Active',
         last_service: '',
         next_service: '',
@@ -179,7 +220,7 @@ const BusManagement = () => {
             <Box className="flex items-center justify-between">
               <Box>
                 <Typography color="text.secondary" variant="body2">Total Buses</Typography>
-                <Typography variant="h4" className="font-bold">{buses.length}</Typography>
+                <Typography variant="h4" className="font-bold">{pagination.total}</Typography>
               </Box>
               <Bus size={32} className="text-blue-600" />
             </Box>
@@ -240,7 +281,10 @@ const BusManagement = () => {
             <TextField
               select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => {
+                setFilterStatus(e.target.value);
+                setPagination(prev => ({ ...prev, page: 0 }));
+              }}
               size="small"
               className="w-52"
             >
@@ -270,7 +314,7 @@ const BusManagement = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredBuses.map((bus) => (
+              {buses.map((bus) => (
                 <TableRow key={bus.id} hover>
                   <TableCell className="font-medium">{bus.bus_number}</TableCell>
                   <TableCell>{bus.route_name}</TableCell>
@@ -305,9 +349,25 @@ const BusManagement = () => {
                   </TableCell>
                 </TableRow>
               ))}
+              {buses.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} align="center" className="py-8">
+                    <Typography color="text.secondary">No buses found</Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          component="div"
+          count={pagination.total}
+          rowsPerPage={pagination.rowsPerPage}
+          page={pagination.page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
       </Card>
 
       {/* Add/Edit Dialog */}
@@ -334,7 +394,12 @@ const BusManagement = () => {
               value={formData.route_id}
               onChange={(e) => setFormData({ ...formData, route_id: e.target.value })}
               fullWidth
-              required
+            />
+            <TextField
+              label="Route Name"
+              value={formData.route_name}
+              onChange={(e) => setFormData({ ...formData, route_name: e.target.value })}
+              fullWidth
             />
             <TextField
               label="Capacity"
@@ -348,6 +413,12 @@ const BusManagement = () => {
               label="Driver ID"
               value={formData.driver_id}
               onChange={(e) => setFormData({ ...formData, driver_id: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Driver Name"
+              value={formData.driver_name}
+              onChange={(e) => setFormData({ ...formData, driver_name: e.target.value })}
               fullWidth
             />
             <TextField

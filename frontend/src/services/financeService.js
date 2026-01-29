@@ -1,20 +1,20 @@
-import axios from 'axios';
-import { API_URL } from '../config';
-
-const api = axios.create({
-  baseURL: `${API_URL}/finance`,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+/**
+ * Finance Service
+ * Handles all finance-related API calls
+ */
+import httpClient from './httpClient';
 
 class FinanceService {
+  constructor() {
+    this.baseUrl = '/finance';
+  }
+
   // ==================== DASHBOARD ====================
   
   async getDashboardMetrics(filters = {}) {
     try {
-      const response = await api.get('/dashboard/metrics', { params: filters });
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/dashboard/metrics`, { params: filters });
+      return response.data;
     } catch (error) {
       console.error('Error fetching dashboard metrics:', error);
       return { success: false, error: error.message };
@@ -23,8 +23,8 @@ class FinanceService {
 
   async getRevenueExpensesData(filters = {}) {
     try {
-      const response = await api.get('/dashboard/revenue-expenses', { params: filters });
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/dashboard/revenue-expenses`, { params: filters });
+      return response.data;
     } catch (error) {
       console.error('Error fetching revenue/expenses data:', error);
       return { success: false, error: error.message };
@@ -33,8 +33,8 @@ class FinanceService {
 
   async getFeeCollectionData(filters = {}) {
     try {
-      const response = await api.get('/dashboard/fee-collection', { params: filters });
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/dashboard/fee-collection`, { params: filters });
+      return response.data;
     } catch (error) {
       console.error('Error fetching fee collection data:', error);
       return { success: false, error: error.message };
@@ -43,8 +43,8 @@ class FinanceService {
 
   async getBudgetAnalysisData(filters = {}) {
     try {
-      const response = await api.get('/dashboard/budget-analysis', { params: filters });
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/dashboard/budget-analysis`, { params: filters });
+      return response.data;
     } catch (error) {
       console.error('Error fetching budget analysis data:', error);
       return { success: false, error: error.message };
@@ -53,8 +53,8 @@ class FinanceService {
 
   async getFinancialTrendsData(filters = {}) {
     try {
-      const response = await api.get('/dashboard/financial-trends', { params: filters });
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/dashboard/financial-trends`, { params: filters });
+      return response.data;
     } catch (error) {
       console.error('Error fetching financial trends data:', error);
       return { success: false, error: error.message };
@@ -63,8 +63,8 @@ class FinanceService {
 
   async getSalaryDistributionData(filters = {}) {
     try {
-      const response = await api.get('/dashboard/salary-distribution', { params: filters });
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/dashboard/salary-distribution`, { params: filters });
+      return response.data;
       } catch (error) {
       console.error('Error fetching salary distribution data:', error);
       return { success: false, error: error.message };
@@ -75,8 +75,8 @@ class FinanceService {
   
   async getStudentFees(filters = {}) {
     try {
-      const response = await api.get('/student-fees', { params: filters });
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/student-fees`, { params: filters });
+      return response.data;
     } catch (error) {
       console.error('Error fetching student fees:', error);
       return { success: false, error: error.message };
@@ -85,8 +85,8 @@ class FinanceService {
 
   async getStudentFee(id) {
     try {
-      const response = await api.get(`/student-fees/${id}`);
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/student-fees/${id}`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching student fee:', error);
       return { success: false, error: error.message };
@@ -95,8 +95,8 @@ class FinanceService {
 
   async createStudentFee(feeData) {
     try {
-      const response = await api.post('/student-fees', feeData);
-      return { success: true, data: response.data };
+      const response = await httpClient.post(`${this.baseUrl}/student-fees`, feeData);
+      return response.data;
     } catch (error) {
       console.error('Error creating student fee:', error);
       return { success: false, error: error.message };
@@ -105,8 +105,8 @@ class FinanceService {
 
   async updateStudentFee(id, updates) {
     try {
-      const response = await api.put(`/student-fees/${id}`, updates);
-      return { success: true, data: response.data };
+      const response = await httpClient.put(`${this.baseUrl}/student-fees/${id}`, updates);
+      return response.data;
     } catch (error) {
       console.error('Error updating student fee:', error);
       return { success: false, error: error.message };
@@ -115,7 +115,7 @@ class FinanceService {
 
   async deleteStudentFee(id) {
     try {
-      await api.delete(`/student-fees/${id}`);
+      await httpClient.delete(`${this.baseUrl}/student-fees/${id}`);
       return { success: true };
     } catch (error) {
       console.error('Error deleting student fee:', error);
@@ -123,64 +123,13 @@ class FinanceService {
     }
   }
 
-  // ==================== STAFF PAYROLL ====================
   
-  async getStaffPayroll(filters = {}) {
-    try {
-      const response = await api.get('/staff-payroll', { params: filters });
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error fetching staff payroll:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async getPayrollRecord(id) {
-    try {
-      const response = await api.get(`/staff-payroll/${id}`);
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error fetching payroll record:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async createPayrollRecord(payrollData) {
-    try {
-      const response = await api.post('/staff-payroll', payrollData);
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error creating payroll record:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async updatePayrollRecord(id, updates) {
-    try {
-      const response = await api.put(`/staff-payroll/${id}`, updates);
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error updating payroll record:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async deletePayrollRecord(id) {
-    try {
-      await api.delete(`/staff-payroll/${id}`);
-      return { success: true };
-    } catch (error) {
-      console.error('Error deleting payroll record:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
   // ==================== EXPENSES ====================
   
   async getExpenses(filters = {}) {
     try {
-      const response = await api.get('/expenses', { params: filters });
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/expenses`, { params: filters });
+      return response.data;
     } catch (error) {
       console.error('Error fetching expenses:', error);
       return { success: false, error: error.message };
@@ -189,8 +138,8 @@ class FinanceService {
 
   async getExpense(id) {
     try {
-      const response = await api.get(`/expenses/${id}`);
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/expenses/${id}`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching expense:', error);
       return { success: false, error: error.message };
@@ -199,8 +148,8 @@ class FinanceService {
 
   async createExpense(expenseData) {
     try {
-      const response = await api.post('/expenses', expenseData);
-      return { success: true, data: response.data };
+      const response = await httpClient.post(`${this.baseUrl}/expenses`, expenseData);
+      return response.data;
     } catch (error) {
       console.error('Error creating expense:', error);
       return { success: false, error: error.message };
@@ -209,8 +158,8 @@ class FinanceService {
 
   async updateExpense(id, updates) {
     try {
-      const response = await api.put(`/expenses/${id}`, updates);
-      return { success: true, data: response.data };
+      const response = await httpClient.put(`${this.baseUrl}/expenses/${id}`, updates);
+      return response.data;
     } catch (error) {
       console.error('Error updating expense:', error);
       return { success: false, error: error.message };
@@ -219,7 +168,7 @@ class FinanceService {
 
   async deleteExpense(id) {
     try {
-      await api.delete(`/expenses/${id}`);
+      await httpClient.delete(`${this.baseUrl}/expenses/${id}`);
       return { success: true };
     } catch (error) {
       console.error('Error deleting expense:', error);
@@ -231,8 +180,8 @@ class FinanceService {
   
   async getVendors(filters = {}) {
     try {
-      const response = await api.get('/vendors', { params: filters });
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/vendors`, { params: filters });
+      return response.data;
     } catch (error) {
       console.error('Error fetching vendors:', error);
       return { success: false, error: error.message };
@@ -241,8 +190,8 @@ class FinanceService {
 
   async getVendor(id) {
     try {
-      const response = await api.get(`/vendors/${id}`);
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/vendors/${id}`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching vendor:', error);
       return { success: false, error: error.message };
@@ -251,8 +200,8 @@ class FinanceService {
 
   async createVendor(vendorData) {
     try {
-      const response = await api.post('/vendors', vendorData);
-      return { success: true, data: response.data };
+      const response = await httpClient.post(`${this.baseUrl}/vendors`, vendorData);
+      return response.data;
     } catch (error) {
       console.error('Error creating vendor:', error);
       return { success: false, error: error.message };
@@ -261,8 +210,8 @@ class FinanceService {
 
   async updateVendor(id, updates) {
     try {
-      const response = await api.put(`/vendors/${id}`, updates);
-      return { success: true, data: response.data };
+      const response = await httpClient.put(`${this.baseUrl}/vendors/${id}`, updates);
+      return response.data;
     } catch (error) {
       console.error('Error updating vendor:', error);
       return { success: false, error: error.message };
@@ -271,7 +220,7 @@ class FinanceService {
 
   async deleteVendor(id) {
     try {
-      await api.delete(`/vendors/${id}`);
+      await httpClient.delete(`${this.baseUrl}/vendors/${id}`);
       return { success: true };
     } catch (error) {
       console.error('Error deleting vendor:', error);
@@ -283,8 +232,8 @@ class FinanceService {
   
   async getBudgetAllocations(filters = {}) {
     try {
-      const response = await api.get('/budget-allocation', { params: filters });
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/budget-allocation`, { params: filters });
+      return response.data;
     } catch (error) {
       console.error('Error fetching budget allocations:', error);
       return { success: false, error: error.message };
@@ -293,8 +242,8 @@ class FinanceService {
 
   async getBudgetAllocation(id) {
     try {
-      const response = await api.get(`/budget-allocation/${id}`);
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/budget-allocation/${id}`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching budget allocation:', error);
       return { success: false, error: error.message };
@@ -303,8 +252,8 @@ class FinanceService {
 
   async createBudgetAllocation(budgetData) {
     try {
-      const response = await api.post('/budget-allocation', budgetData);
-      return { success: true, data: response.data };
+      const response = await httpClient.post(`${this.baseUrl}/budget-allocation`, budgetData);
+      return response.data;
     } catch (error) {
       console.error('Error creating budget allocation:', error);
       return { success: false, error: error.message };
@@ -313,8 +262,8 @@ class FinanceService {
 
   async updateBudgetAllocation(id, updates) {
     try {
-      const response = await api.put(`/budget-allocation/${id}`, updates);
-      return { success: true, data: response.data };
+      const response = await httpClient.put(`${this.baseUrl}/budget-allocation/${id}`, updates);
+      return response.data;
     } catch (error) {
       console.error('Error updating budget allocation:', error);
       return { success: false, error: error.message };
@@ -323,7 +272,7 @@ class FinanceService {
 
   async deleteBudgetAllocation(id) {
     try {
-      await api.delete(`/budget-allocation/${id}`);
+      await httpClient.delete(`${this.baseUrl}/budget-allocation/${id}`);
       return { success: true };
     } catch (error) {
       console.error('Error deleting budget allocation:', error);
@@ -335,8 +284,8 @@ class FinanceService {
   
   async getMaintenanceRequests(filters = {}) {
     try {
-      const response = await api.get('/maintenance', { params: filters });
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/maintenance`, { params: filters });
+      return response.data;
     } catch (error) {
       console.error('Error fetching maintenance requests:', error);
       return { success: false, error: error.message };
@@ -345,8 +294,8 @@ class FinanceService {
 
   async getMaintenanceRequest(id) {
     try {
-      const response = await api.get(`/maintenance/${id}`);
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/maintenance/${id}`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching maintenance request:', error);
       return { success: false, error: error.message };
@@ -355,8 +304,8 @@ class FinanceService {
 
   async createMaintenanceRequest(requestData) {
     try {
-      const response = await api.post('/maintenance', requestData);
-      return { success: true, data: response.data };
+      const response = await httpClient.post(`${this.baseUrl}/maintenance`, requestData);
+      return response.data;
     } catch (error) {
       console.error('Error creating maintenance request:', error);
       return { success: false, error: error.message };
@@ -365,8 +314,8 @@ class FinanceService {
 
   async updateMaintenanceRequest(id, updates) {
     try {
-      const response = await api.put(`/maintenance/${id}`, updates);
-      return { success: true, data: response.data };
+      const response = await httpClient.put(`${this.baseUrl}/maintenance/${id}`, updates);
+      return response.data;
     } catch (error) {
       console.error('Error updating maintenance request:', error);
       return { success: false, error: error.message };
@@ -375,7 +324,7 @@ class FinanceService {
 
   async deleteMaintenanceRequest(id) {
     try {
-      await api.delete(`/maintenance/${id}`);
+      await httpClient.delete(`${this.baseUrl}/maintenance/${id}`);
       return { success: true };
     } catch (error) {
       console.error('Error deleting maintenance request:', error);
@@ -387,11 +336,11 @@ class FinanceService {
   
   async sendMessage(message, conversationHistory = []) {
     try {
-      const response = await api.post('/ai-assistant/chat', {
+      const response = await httpClient.post(`${this.baseUrl}/ai-assistant/chat`, {
         message,
         conversationHistory,
       });
-      return { success: true, data: response.data };
+      return response.data;
     } catch (error) {
       console.error('Error sending message to AI assistant:', error);
       return { success: false, error: error.message };
@@ -400,8 +349,8 @@ class FinanceService {
 
   async getConversationHistory(sessionId) {
     try {
-      const response = await api.get(`/ai-assistant/history/${sessionId}`);
-      return { success: true, data: response.data };
+      const response = await httpClient.get(`${this.baseUrl}/ai-assistant/history/${sessionId}`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching conversation history:', error);
       return { success: false, error: error.message };

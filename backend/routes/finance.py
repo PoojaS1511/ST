@@ -91,7 +91,7 @@ def handle_database_error(func):
 
 # ==================== DASHBOARD ENDPOINTS ====================
 
-@finance_bp.route('/api/finance/dashboard/metrics', methods=['GET'])
+@finance_bp.route('/dashboard/metrics', methods=['GET'])
 @auth_required(roles=['admin', 'faculty', 'staff'])
 @handle_database_error
 def get_dashboard_metrics():
@@ -145,7 +145,7 @@ def get_dashboard_metrics():
 
 # ==================== STUDENT FEES ENDPOINTS ====================
 
-@finance_bp.route('/api/finance/student-fees', methods=['GET'])
+@finance_bp.route('/student-fees', methods=['GET'])
 @auth_required(roles=['admin', 'faculty', 'staff'])
 @handle_database_error
 def get_student_fees():
@@ -204,7 +204,7 @@ def get_student_fees():
             'message': str(e)
         }), 500
 
-@finance_bp.route('/api/finance/student-fees', methods=['POST'])
+@finance_bp.route('/student-fees', methods=['POST'])
 @auth_required(roles=['admin', 'staff'])
 @handle_database_error
 def create_student_fee():
@@ -264,7 +264,7 @@ def create_student_fee():
             'message': str(e)
         }), 500
 
-@finance_bp.route('/api/finance/student-fees/<fee_id>', methods=['PUT'])
+@finance_bp.route('/student-fees/<fee_id>', methods=['PUT'])
 @auth_required(roles=['admin', 'staff'])
 @handle_database_error
 def update_student_fee(fee_id):
@@ -308,7 +308,7 @@ def update_student_fee(fee_id):
             'message': str(e)
         }), 500
 
-@finance_bp.route('/api/finance/student-fees/<fee_id>', methods=['DELETE'])
+@finance_bp.route('/student-fees/<fee_id>', methods=['DELETE'])
 @auth_required(roles=['admin', 'staff'])
 @handle_database_error
 def delete_student_fee(fee_id):

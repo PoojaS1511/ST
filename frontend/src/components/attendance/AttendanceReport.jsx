@@ -25,8 +25,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Search as SearchIcon, FileDownload as FileDownloadIcon } from '@mui/icons-material';
 import { format, subDays } from 'date-fns';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import toast from 'react-hot-toast';
 
 // Mock data - replace with actual API calls
 const mockAttendanceData = [

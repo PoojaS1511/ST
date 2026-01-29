@@ -6,16 +6,15 @@ exports.getAllFaculty = async (req, res) => {
     const { page = 1, limit = 10, department, search } = req.query;
     
     let query = supabase
-      .from('faculty')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false });
+      .from('quality_facultyperformance')
+      .select('*', { count: 'exact' });
 
-    if (department) {
+    if (department && department !== 'All Departments') {
       query = query.eq('department', department);
     }
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,employee_id.ilike.%${search}%`);
+      query = query.or(`faculty_name.ilike.%${search}%,faculty_id.ilike.%${search}%`);
     }
 
     const from = (page - 1) * limit;
@@ -46,19 +45,26 @@ exports.getAllFaculty = async (req, res) => {
 
 exports.addFaculty = async (req, res) => {
   try {
-    const facultyData = {
-      ...req.body,
-      performance_rating: req.body.performance_rating || 0,
-      research_output: req.body.research_output || 0,
-      student_feedback_score: req.body.student_feedback_score || 0,
-      teaching_hours: req.body.teaching_hours || 0,
-      publications: req.body.publications || 0,
-      projects: req.body.projects || 0
-    };
+    // Generate faculty_id if not provided
+    if (!req.body.faculty_id) {
+      const { data: lastFaculty } = await supabase
+        .from('quality_facultyperformance')
+        .select('faculty_id')
+        .order('faculty_id', { ascending: false })
+        .limit(1);
+      
+      let nextId = 'F0001';
+      if (lastFaculty && lastFaculty.length > 0) {
+        const lastId = lastFaculty[0].faculty_id;
+        const currentNum = parseInt(lastId.substring(1));
+        nextId = `F${(currentNum + 1).toString().padStart(4, '0')}`;
+      }
+      req.body.faculty_id = nextId;
+    }
 
     const { data, error } = await supabase
-      .from('faculty')
-      .insert([facultyData])
+      .from('quality_facultyperformance')
+      .insert([req.body])
       .select();
 
     if (error) throw error;
@@ -82,9 +88,9 @@ exports.updateFaculty = async (req, res) => {
     const { id } = req.params;
     
     const { data, error } = await supabase
-      .from('faculty')
+      .from('quality_facultyperformance')
       .update(req.body)
-      .eq('id', id)
+      .eq('faculty_id', id)
       .select();
 
     if (error) throw error;
@@ -115,9 +121,9 @@ exports.deleteFaculty = async (req, res) => {
     const { id } = req.params;
     
     const { error } = await supabase
-      .from('faculty')
+      .from('quality_facultyperformance')
       .delete()
-      .eq('id', id);
+      .eq('faculty_id', id);
 
     if (error) throw error;
 
@@ -136,7 +142,13 @@ exports.deleteFaculty = async (req, res) => {
 
 exports.getFacultyAnalytics = async (req, res) => {
   try {
-    // Performance trends
+    const { data: facultyData, error } = await supabase
+      .from('quality_facultyperformance')
+      .select('*');
+
+    if (error) throw error;
+
+    // Performance trends (mock data for demo)
     const performanceTrends = [
       { month: 'Jan', score: 75 },
       { month: 'Feb', score: 78 },
@@ -146,7 +158,7 @@ exports.getFacultyAnalytics = async (req, res) => {
       { month: 'Jun', score: 88 }
     ];
 
-    // Research output trends
+    // Research output trends (mock data for demo)
     const researchOutput = [
       { month: 'Jan', count: 15 },
       { month: 'Feb', count: 18 },
@@ -156,35 +168,44 @@ exports.getFacultyAnalytics = async (req, res) => {
       { month: 'Jun', count: 28 }
     ];
 
-    // Department comparison
-    const { data: departmentData } = await supabase
-      .from('faculty')
-      .select('department, performance_rating')
-      .not('performance_rating', 'is', null);
-
-    const departmentComparison = departmentData ? 
-      departmentData.reduce((acc, faculty) => {
-        const dept = acc.find(item => item.department === faculty.department);
+    // Department comparison based on actual data
+    const departmentComparison = facultyData ? 
+      facultyData.reduce((acc, faculty) => {
+        const deptName = faculty.department;
+        const dept = acc.find(item => item.department === deptName);
         if (dept) {
-          dept.total += faculty.performance_rating;
           dept.count += 1;
+          dept.total_score += faculty.performance_rating;
+          dept.score = Math.floor(dept.total_score / dept.count);
         } else {
           acc.push({
-            department: faculty.department,
-            total: faculty.performance_rating,
-            count: 1
+            department: deptName,
+            count: 1,
+            total_score: faculty.performance_rating,
+            score: faculty.performance_rating
           });
         }
         return acc;
-      }, []).map(item => ({
-        department: item.department,
-        score: Math.round(item.total / item.count)
-      })) : [];
+      }, []) : [];
+
+    // Add some stats
+    const totalFaculty = facultyData ? facultyData.length : 0;
+    const avgPerformance = totalFaculty > 0 
+      ? Math.floor(facultyData.reduce((sum, f) => sum + (f.performance_rating || 0), 0) / totalFaculty)
+      : 0;
+    
+    const totalResearch = facultyData ? facultyData.reduce((sum, f) => sum + (f.research_papers || 0), 0) : 0;
 
     const analytics = {
       performance_trends: performanceTrends,
       research_output: researchOutput,
-      department_comparison: departmentComparison
+      department_comparison: departmentComparison,
+      stats: {
+        total_faculty: totalFaculty,
+        avg_performance: avgPerformance,
+        total_research: totalResearch,
+        total_publications: totalResearch // Using research_papers as publications for now
+      }
     };
 
     res.json({

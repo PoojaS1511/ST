@@ -1,58 +1,55 @@
 from flask import Blueprint, jsonify, request
 from functools import wraps
+from supabase_client import get_supabase
 
 # Create blueprint
 quality_analytics_bp = Blueprint('quality_analytics', __name__)
 
-# Simple CORS decorator
-def cors_enabled(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # Handle OPTIONS requests
-        if request.method == 'OPTIONS':
-            response = jsonify({'status': 'preflight'})
-            origin = request.headers.get('Origin', 'http://localhost:3001')
-            allowed_origins = ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001']
-            if origin in allowed_origins:
-                response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-            response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-            return response
-        
-        # Handle actual requests
-        response = f(*args, **kwargs)
-        if hasattr(response, 'headers'):
-            origin = request.headers.get('Origin', 'http://localhost:3001')
-            allowed_origins = ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001']
-            if origin in allowed_origins:
-                response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
-    return decorated_function
-
 @quality_analytics_bp.route('/analytics/comprehensive', methods=['GET', 'OPTIONS'])
-@cors_enabled
 def get_comprehensive_analytics():
     """Get comprehensive quality analytics"""
     try:
+        # Extract JWT token from Authorization header
+        auth_header = request.headers.get('Authorization')
+        token = None
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
+
+        supabase = get_supabase(token=token)
+        
+        # Fetch data from various tables
+        faculty_res = supabase.table('quality_facultyperformance').select('*').execute()
+        faculty_data = faculty_res.data or []
+        
+        accreditation_res = supabase.table('quality_accreditation').select('*').order('report_date', desc=True).limit(1).execute()
+        latest_accreditation = accreditation_res.data[0] if accreditation_res.data else {}
+        
+        students_res = supabase.table('students').select('*', count='exact').execute()
+        total_students = students_res.count or 0
+        
+        total_faculty = len(faculty_data)
+        
+        # Calculate research metrics
+        total_publications = sum([f.get('research_papers', 0) for f in faculty_data])
+        total_projects = 0 # No projects field in quality_facultyperformance
+        
         analytics = {
             'institutional_metrics': {
-                'total_students': 2500,
-                'total_faculty': 85,
-                'student_faculty_ratio': 29.4,
-                'accreditation_score': 'A+',
-                'quality_index': 92.5
+                'total_students': total_students,
+                'total_faculty': total_faculty,
+                'student_faculty_ratio': round(total_students / total_faculty, 1) if total_faculty > 0 else 0,
+                'accreditation_score': 'A' if float(latest_accreditation.get('score', 0)) >= 80 else 'B',
+                'quality_index': float(latest_accreditation.get('score', 0))
             },
             'academic_performance': {
-                'average_cgpa': 8.2,
+                'average_cgpa': 8.2, # Mock if no student performance table
                 'pass_percentage': 94.5,
                 'placement_rate': 87.3,
                 'higher_studies_rate': 12.8
             },
             'research_metrics': {
-                'total_publications': 156,
-                'cited_papers': 89,
+                'total_publications': total_publications,
+                'total_projects': total_projects,
                 'research_grants': 12,
                 'patents_filed': 8
             },
@@ -75,10 +72,15 @@ def get_comprehensive_analytics():
         }), 500
 
 @quality_analytics_bp.route('/analytics/insights', methods=['GET', 'OPTIONS'])
-@cors_enabled
 def get_ai_insights():
     """Get AI-powered insights"""
     try:
+        # Extract JWT token from Authorization header (optional for insights)
+        auth_header = request.headers.get('Authorization')
+        token = None
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
+
         insights = {
             'performance_trends': {
                 'student_performance': 'improving',
