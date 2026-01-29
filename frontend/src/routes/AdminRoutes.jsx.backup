@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 // Layout
 import AdminDashboard from '../pages/admin/AdminDashboard';
@@ -25,9 +26,9 @@ import Settings from '../components/admin/Settings';
 import TestComponent from '../components/admin/TestComponent';
 
 // Faculty
-import FacultyDashboard from '../pages/faculty/admin faculty/admin/Dashboard';
-import FacultyManagement from '../pages/faculty/admin faculty/admin/FacultyManagement';
-import FacultyAttendance from '../pages/faculty/admin faculty/admin/Attendance';
+import FacultyDashboard from '../pages/faculty/admin_faculty/admin/Dashboard';
+import FacultyManagement from '../pages/faculty/admin_faculty/admin/FacultyManagement';
+import FacultyAttendance from '../pages/faculty/admin_faculty/admin/Attendance';
 // Infrastructure & Facilities
 import FacilitiesManagement from '../pages/admin/FacilitiesManagement';
 import InfrastructureFacilities from '../pages/admin/infrastructure/InfrastructureFacilities';
@@ -97,13 +98,45 @@ import FeeAnalytics from '../pages/admin/analytics/FeeAnalytics';
 import EnrollmentAnalytics from '../pages/admin/analytics/EnrollmentAnalytics';
 import UtilizationAnalytics from '../pages/admin/analytics/UtilizationAnalytics';
 
+// HR Management
+import HROnboardingDashboard from '../components/hr/HROnboardingDashboard';
+import HROnboarding from '../pages/hr/HROnboarding';
+import AddEmployee from '../components/hr/AddEmployeeSimple';
+import EmployeeList from '../components/hr/EmployeeListSimple';
+
+// Quality & Accreditation Management
+import QualityDashboard from '../pages/quality/Dashboard';
+import QualityFaculty from '../pages/quality/Faculty';
+import QualityAudits from '../pages/quality/Audits';
+import QualityGrievances from '../pages/quality/Grievances';
+import QualityPolicies from '../pages/quality/Policies';
+import QualityAccreditation from '../pages/quality/Accreditation';
+import QualityAnalytics from '../pages/quality/Analytics';
+
+
+// Transport Module
+import TransportManagement from '../pages/admin/TransportManagement';
+import TransportDashboard from '../components/transport/TransportDashboard';
+import TransportStudentManagement from '../components/transport/StudentManagement';
+import TransportFacultyManagement from '../components/transport/FacultyManagement';
+import BusManagement from '../components/transport/BusManagement';
+import DriverManagement from '../components/transport/DriverManagement';
+import RouteManagement from '../components/transport/RouteManagement';
+import TransportFeesManagement from '../components/transport/FeesManagement';
+import TransportAttendanceManagement from '../components/transport/AttendanceManagement';
+import LiveTracking from '../components/transport/LiveTracking';
+import TransportReports from '../components/transport/Reports';
+import FinanceRoutes from './FinanceRoutes.jsx';
+
 const AdminRoutes = () => {
+  const { isAuthenticated } = useAuth();
+
   return (
     <Routes>
       <Route element={<AdminDashboard />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminOverview />} />
-        
+
         {/* Student Management */}
         <Route path="students">
           <Route index element={<StudentManagement />} />
@@ -111,7 +144,7 @@ const AdminRoutes = () => {
           <Route path=":id/edit" element={<AddStudent />} />
           <Route path="credentials" element={<StudentCredentials />} />
         </Route>
-        
+
         {/* Fees Management */}
         <Route path="fees">
           <Route index element={<FeesList />} />
@@ -121,16 +154,16 @@ const AdminRoutes = () => {
           <Route path="payments/new" element={<PaymentForm />} />
           <Route path=":id/pay" element={<PaymentForm />} />
         </Route>
-        
+
         {/* Notifications */}
         <Route path="notifications" element={<NotificationManagement />} />
-        
+
         {/* Faculty Management */}
         <Route path="faculty">
-          <Route index element={<FacultyDashboard />} />
-          <Route path="dashboard" element={<FacultyDashboard />} />
-          <Route path="management" element={<FacultyManagement />} />
-          <Route path="attendance" element={<FacultyAttendance />} />
+          <Route index element={isAuthenticated ? <FacultyDashboard /> : <Navigate to="/login" />} />
+          <Route path="dashboard" element={isAuthenticated ? <FacultyDashboard /> : <Navigate to="/login" />} />
+          <Route path="management" element={isAuthenticated ? <FacultyManagement /> : <Navigate to="/login" />} />
+          <Route path="attendance" element={isAuthenticated ? <FacultyAttendance /> : <Navigate to="/login" />} />
         </Route>
         
         {/* Test Route */}
@@ -226,6 +259,9 @@ const AdminRoutes = () => {
         {/* AI Assistant */}
         <Route path="ai-assistant" element={<AIAssistant />} />
         
+        {/* Finance Module */}
+        <Route path="finance/*" element={<FinanceRoutes />} />
+        
         {/* Settings */}
         <Route path="settings" element={<Settings />} />
         
@@ -272,13 +308,48 @@ const AdminRoutes = () => {
           <Route path=":clubId/awards" element={<ClubAwards />} />
           <Route path=":clubId/edit" element={<ClubForm />} />
         </Route>
-        
+
+        {/* Quality & Accreditation */}
+        <Route path="quality">
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<QualityDashboard />} />
+          <Route path="faculty" element={<QualityFaculty />} />
+          <Route path="audits" element={<QualityAudits />} />
+          <Route path="grievances" element={<QualityGrievances />} />
+          <Route path="policies" element={<QualityPolicies />} />
+          <Route path="accreditation" element={<QualityAccreditation />} />
+          <Route path="analytics" element={<QualityAnalytics />} />
+        </Route>
+
+
+        {/* Transport Management Module */}
+        <Route path="transport" element={<TransportManagement />}>
+          <Route index element={<TransportDashboard />} />
+          <Route path="students" element={<TransportStudentManagement />} />
+          <Route path="faculty" element={<TransportFacultyManagement />} />
+          <Route path="buses" element={<BusManagement />} />
+          <Route path="drivers" element={<DriverManagement />} />
+          <Route path="routes" element={<RouteManagement />} />
+          <Route path="fees" element={<TransportFeesManagement />} />
+          <Route path="attendance" element={<TransportAttendanceManagement />} />
+          <Route path="tracking" element={<LiveTracking />} />
+          <Route path="reports" element={<TransportReports />} />
+        </Route>
+
+        {/* HR Management Module */}
+        <Route path="hr">
+          <Route index element={<HROnboardingDashboard />} />
+          <Route path="dashboard" element={<HROnboardingDashboard />} />
+          <Route path="add-employee" element={<AddEmployee />} />
+          <Route path="employees" element={<EmployeeList />} />
+        </Route>
+
         {/* Test Component */}
         <Route path="test" element={<TestComponent />} />
-        
+
         {/* Resume Analyzer */}
         <Route path="resume-analyzer" element={<ResumeUpload />} />
-        
+
         {/* Catch-all route */}
         <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
       </Route>

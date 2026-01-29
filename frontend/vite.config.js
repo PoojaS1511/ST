@@ -18,9 +18,16 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       include: [
+        '@supabase/auth-helpers-nextjs',
+        '@supabase/ssr',
+        '@supabase/supabase-js',
         'react',
         'react-dom',
         'react-router-dom',
+        'tailwindcss',
+        'postcss',
+        'autoprefixer',
+        '@tailwindcss/nesting',
         'file-saver',
         'jspdf',
         'jspdf-autotable'

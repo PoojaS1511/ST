@@ -2845,6 +2845,7 @@ def register_blueprints():
     """Register all blueprints with the Flask application."""
     # Import blueprints here to avoid circular imports
     from routes.auth import auth_bp
+    from routes.hr import hr_bp
     from routes.admin import admin_bp
     from routes.students import students_bp
     from routes.faculty import faculty_bp
@@ -2876,13 +2877,11 @@ def register_blueprints():
     from routes.quality.policies import quality_policies_bp
     from routes.quality.accreditation import quality_accreditation_bp
     from routes.finance_validation import validation_bp as finance_validation_bp
-    
-    # HR Onboarding routes
-    from routes.hrOnboardingRoutes import hr_onboarding_bp
 
     # Register blueprints with proper URL prefixes
     # Note: Order matters - more specific routes should be registered first
     app.register_blueprint(auth_bp, url_prefix='/api/auth')  # Auth routes first
+    app.register_blueprint(hr_bp)  # HR routes (has its own url_prefix)
     app.register_blueprint(career_courses_bp, url_prefix='/api')  # Career courses routes
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(students_bp, url_prefix='/api/students')
@@ -2907,9 +2906,6 @@ def register_blueprints():
     app.register_blueprint(quality_accreditation_bp, url_prefix='/api/quality')
     app.register_blueprint(finance_validation_bp, url_prefix='/api/finance/validate')
     app.register_blueprint(finance_bp)  # Finance routes (has its own url_prefix)
-    
-    # HR Onboarding routes
-    app.register_blueprint(hr_onboarding_bp)  # HR Onboarding routes (has its own url_prefix)
 
     # General API routes (register these last to avoid route conflicts)
     app.register_blueprint(internships_bp, url_prefix='/api/internships')

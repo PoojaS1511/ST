@@ -461,12 +461,6 @@ const AdminOverview = () => {
       </Box>
     );
   }
-
-  // Debug: show client-side info for troubleshooting (development only)
-  if (process.env.NODE_ENV === 'development') {
-    const lastErrorRaw = localStorage.getItem('last_client_error');
-    if (lastErrorRaw) console.log('AdminOverview - last client error:', JSON.parse(lastErrorRaw));
-  }
   
   // If no session after initialization, show error
   if (!session) {
@@ -496,29 +490,8 @@ const AdminOverview = () => {
     );
   }
 
-  // Non-blocking error handling: show a small inline banner but continue rendering the dashboard
-  const ErrorBanner = () => (
-    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded mb-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 mr-2" />
-          <Typography className="text-sm text-yellow-800">{error}</Typography>
-        </div>
-        <div>
-          <button 
-            onClick={fetchStats}
-            className="px-3 py-1 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // If there was an error but it's not an auth/session error, continue to render the dashboard using DEFAULT_STATS fallback
-  // (Auth/session errors are handled earlier and cause navigation to login.)
-  if (error && (error.includes('session') || error.includes('auth') || error.includes('token') || error.includes('401') || error.includes('422'))) {
+  // Error state
+  if (error) {
     return (
       <Box className="p-6 bg-red-50 rounded-lg">
         <div className="flex items-center">
@@ -537,11 +510,6 @@ const AdminOverview = () => {
 
   return (
     <div className="space-y-6">
-      {/* Inline error banner (non-blocking) */}
-      {error && !(error.includes('session') || error.includes('auth') || error.includes('token') || error.includes('401') || error.includes('422')) && (
-        <ErrorBanner />
-      )}
-
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {stats.map((stat, index) => (

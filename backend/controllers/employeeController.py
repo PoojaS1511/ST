@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 
 # Import models
 from models.supabase_employee_master import SupabaseEmployeeMaster
-from models.supabase_hr_onboarding import (
+from models.supabase_employee_models import (
     SupabaseEmployeeDocuments,
     SupabaseSalaryStructure,
     SupabaseLeavePolicy,

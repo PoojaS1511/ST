@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 // Import all icons from heroicons
-import {
+import { 
   // Outline Icons
   AcademicCapIcon,
   BellAlertIcon,
@@ -25,8 +25,6 @@ import {
   HomeIcon,
   LightBulbIcon,
   PhotoIcon,
-  ChartPieIcon,
-  ReceiptPercentIcon,
   ServerIcon,
   ShieldCheckIcon,
   TrophyIcon,
@@ -85,10 +83,7 @@ const AdminSidebar = () => {
     clubs: location.pathname.startsWith('/admin/academics/clubs'),
     infrastructure: location.pathname.startsWith('/admin/infrastructure'),
     it: location.pathname.startsWith('/admin/it'),
-    sports: location.pathname.startsWith('/admin/sports'),
-    quality: location.pathname.startsWith('/admin/quality'),
-    finance: location.pathname.startsWith('/admin/finance'),
-    hr: location.pathname.startsWith('/admin/hr')
+    sports: location.pathname.startsWith('/admin/sports')
   });
 
   const toggleSection = (section) => {
@@ -99,9 +94,6 @@ const AdminSidebar = () => {
   };
 
   const isActive = (path, fullPath = null, exact = false) => {
-    // Handle undefined path
-    if (!path) return false;
-    
     // If fullPath is provided, use it for exact matching
     if (fullPath) {
       return location.pathname === fullPath;
@@ -129,8 +121,11 @@ const AdminSidebar = () => {
              location.pathname === '/admin/dashboard';
     }
     
-    // Default case - check if pathname starts with the path
-    return location.pathname.startsWith(`/admin/${path}`);
+    // For non-exact matching, check if the current path starts with the given path
+    // but ensure we're not matching partial path segments
+    const pathToCheck = `/admin/${path}`;
+    return location.pathname === pathToCheck || 
+           (location.pathname.startsWith(`${pathToCheck}/`) && path !== '');
   };
 
   const isExactActive = (path) => {
@@ -261,88 +256,36 @@ const AdminSidebar = () => {
       name: 'Transport', 
       path: 'transport',
       icon: TruckIcon,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-100'
+      color: 'text-white',
+      bgColor: 'bg-amber-100',
+      external: true,
+      externalUrl: 'http://localhost:8080',
+      onClick: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Open the transport management system on port 8080 in a new tab
+        const newWindow = window.open('http://localhost:8080', '_blank', 'noopener,noreferrer');
+        if (newWindow) newWindow.opener = null;
+      }
     },
     { 
-      name: 'HR Management', 
-      path: 'hr',
-      icon: UserGroupOutlineIcon,
-      color: 'text-pink-600',
-      bgColor: 'bg-pink-100',
-      hasChildren: true,
-      children: [
-        { 
-          name: 'HR Dashboard',
-          path: 'hr/dashboard',
-          fullPath: '/admin/hr/dashboard'
-        },
-        {
-          name: 'Add Employee',
-          path: 'hr/add-employee',
-          fullPath: '/admin/hr/add-employee'
-        },
-        {
-          name: 'Employee List',
-          path: 'hr/employees',
-          fullPath: '/admin/hr/employees'
-        }
-      ]
-    },
-    {
-      name: 'Financial Administration',
-      path: 'finance',
+      name: 'Financial Administration', 
+      path: 'financial',
       icon: CurrencyDollarSolidIcon,
-      color: 'text-green-700',
+      color: 'text-white',
       bgColor: 'bg-green-100',
-      hasChildren: true,
-      children: [
-        {
-          name: 'Dashboard',
-          path: 'finance/dashboard',
-          fullPath: '/admin/finance/dashboard',
-          icon: ChartBarOutlineIcon
-        },
-        {
-          name: 'Student Fees',
-          path: 'finance/student-fees',
-          fullPath: '/admin/finance/student-fees',
-          icon: CurrencyDollarOutlineIcon
-        },
-        {
-          name: 'Staff Payroll',
-          path: 'finance/staff-payroll',
-          fullPath: '/admin/finance/staff-payroll',
-          icon: UserGroupOutlineIcon
-        },
-        {
-          name: 'Expenses',
-          path: 'finance/expenses',
-          fullPath: '/admin/finance/expenses',
-          icon: ReceiptPercentIcon
-        },
-        {
-          name: 'Budget Allocation',
-          path: 'finance/budget',
-          fullPath: '/admin/finance/budget',
-          icon: ChartPieIcon
-        },
-        {
-          name: 'Maintenance',
-          path: 'finance/maintenance',
-          fullPath: '/admin/finance/maintenance',
-          icon: WrenchScrewdriverIcon
-        },
-        {
-          name: 'AI Assistant',
-          path: 'finance/ai-assistant',
-          fullPath: '/admin/finance/ai-assistant',
-          icon: CpuChipIcon
-        }
-      ]
+      external: true,
+      externalUrl: 'http://localhost:5000',
+      onClick: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Open the financial administration system on port 5000 in a new tab
+        const newWindow = window.open('http://localhost:5000', '_blank', 'noopener,noreferrer');
+        if (newWindow) newWindow.opener = null;
+      }
     },
-    {
-      name: 'Fees',
+    { 
+      name: 'Fees', 
       path: 'fees',
       icon: CurrencyDollarOutlineIcon,
       color: 'text-emerald-600',
@@ -536,51 +479,6 @@ const AdminSidebar = () => {
       ]
     },
     { 
-      name: 'Quality & Accreditation', 
-      path: 'quality',
-      icon: ShieldCheckIcon,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-100',
-      hasChildren: true,
-      children: [
-        {
-          name: 'Dashboard',
-          path: 'quality/dashboard',
-          fullPath: '/admin/quality/dashboard'
-        },
-        {
-          name: 'Faculty Performance',
-          path: 'quality/faculty',
-          fullPath: '/admin/quality/faculty'
-        },
-        {
-          name: 'Audit Records',
-          path: 'quality/audits',
-          fullPath: '/admin/quality/audits'
-        },
-        {
-          name: 'Grievance Reports',
-          path: 'quality/grievances',
-          fullPath: '/admin/quality/grievances'
-        },
-        {
-          name: 'Policy Compliance',
-          path: 'quality/policies',
-          fullPath: '/admin/quality/policies'
-        },
-        {
-          name: 'Accreditation',
-          path: 'quality/accreditation',
-          fullPath: '/admin/quality/accreditation'
-        },
-        {
-          name: 'Analytics',
-          path: 'quality/analytics',
-          fullPath: '/admin/quality/analytics'
-        }
-      ]
-    },
-    { 
       name: 'Settings', 
       path: 'settings',
       icon: Cog6ToothIcon,
@@ -641,13 +539,6 @@ const AdminSidebar = () => {
                         <Link
                           key={child.name}
                           to={child.fullPath || `/admin/${item.path}/${child.path}`}
-                          onClick={(e) => {
-                            // Log the navigation target and current path for debugging
-                            console.log('Sidebar click', {
-                              from: location.pathname,
-                              to: child.fullPath || `/admin/${item.path}/${child.path}`
-                            });
-                          }}
                           className={`group flex items-center px-3 py-2 text-sm font-medium text-white rounded-lg transition-colors duration-200 ${
                             isActive(child.path, child.fullPath)
                               ? 'bg-white bg-opacity-20 font-semibold'
