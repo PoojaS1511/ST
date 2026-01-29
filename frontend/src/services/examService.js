@@ -23,7 +23,7 @@ export const examService = {
       if (subjectIds.length > 0) {
         const { data: subjectsData, error: subjectsError } = await supabase
           .from(TABLES.SUBJECTS)
-          .select('*')
+          .select('*, department:department_id(*)')
           .in('id', subjectIds);
         
         if (subjectsError) throw subjectsError;

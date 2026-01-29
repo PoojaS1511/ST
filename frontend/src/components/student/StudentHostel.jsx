@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '../../contexts/AuthContext'
+import apiService from '../../services/api'
 import { 
   HomeIcon, 
   UserGroupIcon, 
   PhoneIcon, 
   ClockIcon,
   ExclamationTriangleIcon,
-  CheckCircleIcon,
-  MegaphoneIcon,
-  ArrowLeftIcon
+  CheckCircleIcon
 } from '@heroicons/react/24/outline'
 
 const StudentHostel = () => {
@@ -73,16 +71,10 @@ const StudentHostel = () => {
 
       setHostelData(mockHostelData)
 
-      // Use the user data from auth context instead of undefined studentData
-      if (user?.hostel_required) {
+      if (studentData.hostel_required) {
         // Mock hostel allocation data
         const hostelInfo = {
-          student: {
-            id: user.id,
-            full_name: user.name || 'Student',
-            email: user.email,
-            hostel_required: true
-          },
+          student: studentData,
           allocation: {
             hostel_name: 'Cube Hostel Block A',
             room_number: 'A-205',
@@ -126,15 +118,7 @@ const StudentHostel = () => {
         }
         setHostelData(hostelInfo)
       } else {
-        setHostelData({ 
-          student: {
-            id: user.id,
-            full_name: user.name || 'Student',
-            email: user.email,
-            hostel_required: false
-          }, 
-          allocation: null 
-        })
+        setHostelData({ student: studentData, allocation: null })
       }
 
     } catch (error) {
@@ -152,11 +136,11 @@ const StudentHostel = () => {
     )
   }
 
-  if (!hostelData || !hostelData.student) {
+  if (!hostelData) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Hostel Information</h2>
-        <p className="text-gray-600">No hostel data found for the current user.</p>
+        <p className="text-gray-600">No hostel data found.</p>
       </div>
     )
   }
@@ -183,44 +167,12 @@ const StudentHostel = () => {
 
   const { allocation } = hostelData
 
-  const location = useLocation();
-  const isAnnouncementsPage = location.pathname.includes('announcements');
-
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center">
-            {isAnnouncementsPage && (
-              <Link 
-                to="/student/hostel" 
-                className="mr-4 p-1 rounded-full hover:bg-gray-100"
-              >
-                <ArrowLeftIcon className="h-6 w-6 text-gray-600" />
-              </Link>
-            )}
-            <h1 className="text-3xl font-bold text-gray-900">
-              {isAnnouncementsPage ? 'Hostel Announcements' : 'Hostel Information'}
-            </h1>
-            {!isAnnouncementsPage && (
-              <Link
-                to="/student/hostel/announcements"
-                className="ml-auto inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <MegaphoneIcon className="-ml-1 mr-2 h-5 w-5" />
-                View Announcements
-              </Link>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      {/* Main Content */}
-      <div className="py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Outlet />
-        </div>
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Hostel Information</h2>
+        <p className="text-gray-600">Your accommodation details and hostel facilities</p>
       </div>
 
       {/* Room Details */}

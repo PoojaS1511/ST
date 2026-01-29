@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
-import { examService } from '../../services/examService';
 import { 
   DocumentArrowDownIcon, 
   CalendarIcon, 
@@ -12,22 +11,10 @@ import {
 
 const StudentExaminations = () => {
   const { user } = useAuth()
-  
-  // Log user data for debugging
-  useEffect(() => {
-    console.log('Current user data:', {
-      id: user?.id,
-      email: user?.email,
-      department_id: user?.department_id,
-      semester: user?.semester,
-      role: user?.role,
-      rawUser: user
-    });
-  }, [user]);
-  
   const [examSchedule, setExamSchedule] = useState([])
+  const [examResults, setExamResults] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('schedule') // schedule, hallticket
+  const [activeTab, setActiveTab] = useState('schedule') // schedule, results, hallticket
 
   useEffect(() => {
     fetchExamData()
@@ -35,102 +22,123 @@ const StudentExaminations = () => {
 
   const fetchExamData = async () => {
     try {
-      if (!user) {
-        console.log('No user found');
-        return;
-      }
-      
-      // Get department_id and semester from the user object
-      const userDepartmentId = user.department_id || user.current_department_id;
-      const userSemester = user.semester || user.current_semester || 1; // Default to 1 if not found
-      
-      console.log('Fetching exam data for user:', {
-        userId: user.id,
-        email: user.email,
-        departmentId: userDepartmentId,
-        semester: userSemester,
-        rawUser: user // Log the entire user object for debugging
-      });
-      
-      setLoading(true);
-      
-      // Fetch all exams
-      const allExams = await examService.getAllExams();
-      console.log('All exams from API:', allExams);
-      
-      if (!allExams || allExams.length === 0) {
-        console.log('No exams found in the system');
-        setExamSchedule([]);
-        setExamResults([]);
-        return;
-      }
-      
-      // Filter exams for the current student's department and semester
-      const studentExams = allExams.filter(exam => {
-        // If department_id is missing, we'll show all exams for the semester
-        const departmentMatch = !userDepartmentId || exam.department_id === userDepartmentId;
-        // If semester is missing, we'll show all semesters
-        const semesterMatch = !userSemester || exam.semester === userSemester;
-        
-        const matches = departmentMatch && semesterMatch && 
-                       (!exam.end_date || new Date(exam.end_date) >= new Date());
-        
-        console.log(`Exam ${exam.id} - Department: ${exam.department_id} (${exam.department_id === user.department_id ? 'match' : 'no match'}), ` +
-                   `Semester: ${exam.semester} (${exam.semester === user.semester ? 'match' : 'no match'}), ` +
-                   `End Date: ${exam.end_date} (${new Date(exam.end_date) >= new Date() ? 'upcoming' : 'past'})`);
-        
-        return matches;
-      });
-      
-      console.log('Filtered student exams:', studentExams);
-      
-      if (studentExams.length === 0) {
-        console.log('No matching exams found for the current student');
-        setExamSchedule([]);
-        setExamResults([]);
-        return;
-      }
-      
-      // Format the exam data for display
-      const formattedExams = studentExams.map(exam => {
-        const formatted = {
-          id: exam.id,
-          exam_date: exam.start_date,
-          start_date: exam.start_date,
-          end_date: exam.end_date,
-          exam_type: exam.exam_type || 'Regular',
-          name: exam.subject?.name || exam.name || 'Unnamed Exam',
-          subject_id: exam.subject_id,
-          subject_code: exam.subject?.code || `SUBJ${exam.subject_id}`,
-          hall_number: exam.hall_number || 'To be announced',
-          total_marks: exam.total_marks || 100,
-          academic_year: exam.academic_year || '2023-24',
-          semester: exam.semester || user.semester,
-          department_id: exam.department_id,
-          // Add raw exam data for debugging
-          _raw: exam
-        };
-        
-        console.log('Formatted exam:', formatted);
-        return formatted;
-      });
-      
-      setExamSchedule(formattedExams);
-      
-      
+      if (!user) return
+
+      // Mock exam schedule data
+      const mockExamSchedule = [
+        {
+          id: 1,
+          exam_name: 'Computer Networks IA1',
+          exam_type: 'IA1',
+          exam_date: '2025-02-15',
+          exam_time: '10:00 AM',
+          duration: '3 hours',
+          room_number: 'CS-101',
+          subjects: { name: 'Computer Networks', code: 'CS501', credits: 3 }
+        },
+        {
+          id: 2,
+          exam_name: 'Database Systems IA1',
+          exam_type: 'IA1',
+          exam_date: '2025-02-16',
+          exam_time: '10:00 AM',
+          duration: '3 hours',
+          room_number: 'CS-102',
+          subjects: { name: 'Database Management Systems', code: 'CS502', credits: 4 }
+        },
+        {
+          id: 3,
+          exam_name: 'Operating Systems IA2',
+          exam_type: 'IA2',
+          exam_date: '2025-03-15',
+          exam_time: '2:00 PM',
+          duration: '3 hours',
+          room_number: 'CS-103',
+          subjects: { name: 'Operating Systems', code: 'CS503', credits: 4 }
+        },
+        {
+          id: 4,
+          exam_name: 'Computer Networks Final',
+          exam_type: 'final',
+          exam_date: '2025-04-20',
+          exam_time: '10:00 AM',
+          duration: '3 hours',
+          room_number: 'Main Hall',
+          subjects: { name: 'Computer Networks', code: 'CS501', credits: 3 }
+        }
+      ]
+
+      // Mock exam results data
+      const mockExamResults = [
+        {
+          id: 1,
+          exam_id: 1,
+          marks_obtained: 85,
+          max_marks: 100,
+          grade: 'A',
+          grade_points: 9.0,
+          exam_type: 'IA1',
+          subjects: { name: 'Computer Networks', code: 'CS501', credits: 3 }
+        },
+        {
+          id: 2,
+          exam_id: 2,
+          marks_obtained: 78,
+          max_marks: 100,
+          grade: 'B+',
+          grade_points: 8.0,
+          exam_type: 'IA1',
+          subjects: { name: 'Database Management Systems', code: 'CS502', credits: 4 }
+        }
+      ]
+
+      setExamSchedule(mockExamSchedule)
+      setExamResults(mockExamResults)
+
     } catch (error) {
-      console.error('Error in fetchExamData:', {
-        error,
-        message: error.message,
-        stack: error.stack
-      });
-      toast.error('Failed to load exam data. Please try again later.');
+      console.error('Error fetching exam data:', error)
     } finally {
-      console.log('Finished loading exam data');
-      setLoading(false);
+      setLoading(false)
     }
   }
 
+  const getExamsByType = (type) => {
+    return examResults.filter(result => result.exam_type === type)
+  }
+
+  const calculateGPA = (examType) => {
+    const exams = getExamsByType(examType)
+    if (exams.length === 0) return 0
+
+    const totalCredits = exams.reduce((sum, exam) => sum + (exam.subjects?.credits || 0), 0)
+    const totalPoints = exams.reduce((sum, exam) => {
+      const percentage = (exam.marks_obtained / exam.max_marks) * 100
+      const gradePoint = getGradePoint(percentage)
+      return sum + (gradePoint * (exam.subjects?.credits || 0))
+    }, 0)
+
+    return totalCredits > 0 ? (totalPoints / totalCredits).toFixed(2) : 0
+  }
+
+  const getGradePoint = (percentage) => {
+    if (percentage >= 90) return 10
+    if (percentage >= 80) return 9
+    if (percentage >= 70) return 8
+    if (percentage >= 60) return 7
+    if (percentage >= 50) return 6
+    if (percentage >= 40) return 5
+    return 0
+  }
+
+  const getGrade = (percentage) => {
+    if (percentage >= 90) return 'A+'
+    if (percentage >= 80) return 'A'
+    if (percentage >= 70) return 'B+'
+    if (percentage >= 60) return 'B'
+    if (percentage >= 50) return 'C'
+    if (percentage >= 40) return 'D'
+    return 'F'
+  }
 
   const downloadHallTicket = async (examId) => {
     // Don't proceed if already loading
@@ -223,9 +231,8 @@ const StudentExaminations = () => {
 
   if (loading) {
     return (
-      <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-royal-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Loading exam schedule...</p>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-royal-600"></div>
       </div>
     )
   }
@@ -235,7 +242,7 @@ const StudentExaminations = () => {
       {/* Header */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Examinations</h2>
-        <p className="text-gray-600">Exam schedules and hall ticket downloads</p>
+        <p className="text-gray-600">Exam schedules, results, and hall ticket downloads</p>
       </div>
 
       {/* Tab Navigation */}
@@ -253,12 +260,22 @@ const StudentExaminations = () => {
               Exam Schedule
             </button>
             <button
+              onClick={() => setActiveTab('results')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'results'
+                  ? 'border-royal-500 text-royal-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Results
+            </button>
+            <button
+              onClick={() => setActiveTab('hallticket')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'hallticket'
                   ? 'border-royal-500 text-royal-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
-              onClick={() => setActiveTab('hallticket')}
             >
               Hall Ticket
             </button>
@@ -266,115 +283,73 @@ const StudentExaminations = () => {
         </div>
 
         <div className="p-6">
-          {/* Tab Content */}
+          {/* Exam Schedule Tab */}
           {activeTab === 'schedule' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">Exam Schedule</h3>
-                  {examSchedule.length > 0 && (
-                    <span className="text-sm text-gray-600">
-                      Semester {examSchedule[0].semester} • Academic Year {examSchedule[0].academic_year}
-                    </span>
-                  )}
-                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Final Exam Schedule</h3>
                 <span className="text-sm text-gray-600">Semester 5 • Academic Year 2024-25</span>
               </div>
 
               {examSchedule.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+                <div className="text-center py-8">
                   <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600">No exam schedule available yet.</p>
-                  <p className="text-sm text-gray-500 mt-1">Please check back later or contact your department.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <div className="overflow-hidden border border-gray-200 rounded-lg">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Time
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Subject
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Code
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Duration
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Hall
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Time
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Subject
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Code
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Duration
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Hall
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {examSchedule.map((exam) => (
+                        <tr key={exam.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {new Date(exam.exam_date).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {exam.start_time} - {exam.end_time}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {exam.subjects?.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {exam.subjects?.code}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {exam.duration} hours
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {exam.hall_number}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {examSchedule.map((exam) => {
-                          const startDate = new Date(exam.start_date);
-                          const endDate = new Date(exam.end_date);
-                          const durationHours = Math.round((endDate - startDate) / (1000 * 60 * 60));
-                          
-                          return (
-                            <tr key={exam.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {startDate.toLocaleDateString('en-US', {
-                                  weekday: 'short',
-                                  month: 'short',
-                                  day: 'numeric',
-                                })}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -{' '}
-                                {endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {exam.name}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  {exam.exam_type} • {exam.total_marks || 100} marks
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {exam.subject_code}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {durationHours} {durationHours === 1 ? 'hour' : 'hours'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                  exam.hall_number 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-yellow-100 text-yellow-800'
-                                }`}>
-                                  {exam.hall_number || 'TBA'}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <button
-                                  onClick={() => downloadHallTicket(exam.id)}
-                                  className="text-royal-600 hover:text-royal-900 flex items-center"
-                                  disabled={loading}
-                                  title="Download Hall Ticket"
-                                >
-                                  <DocumentArrowDownIcon className="h-5 w-5 mr-1" />
-                                  <span className="sr-only">Download Hall Ticket</span>
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
 
@@ -389,6 +364,106 @@ const StudentExaminations = () => {
                   <li>• Follow all COVID-19 safety protocols</li>
                 </ul>
               </div>
+            </div>
+          )}
+
+          {/* Results Tab */}
+          {activeTab === 'results' && (
+            <div className="space-y-6">
+              {/* GPA Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
+                  <h4 className="text-sm font-medium opacity-90">IA1 GPA</h4>
+                  <p className="text-2xl font-bold">{calculateGPA('IA1')}</p>
+                </div>
+                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white">
+                  <h4 className="text-sm font-medium opacity-90">IA2 GPA</h4>
+                  <p className="text-2xl font-bold">{calculateGPA('IA2')}</p>
+                </div>
+                <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-6 text-white">
+                  <h4 className="text-sm font-medium opacity-90">Model GPA</h4>
+                  <p className="text-2xl font-bold">{calculateGPA('MODEL')}</p>
+                </div>
+                <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-6 text-white">
+                  <h4 className="text-sm font-medium opacity-90">Final GPA</h4>
+                  <p className="text-2xl font-bold">{calculateGPA('FINAL')}</p>
+                </div>
+              </div>
+
+              {/* Detailed Results */}
+              {['IA1', 'IA2', 'MODEL', 'FINAL'].map((examType) => {
+                const exams = getExamsByType(examType)
+                if (exams.length === 0) return null
+
+                return (
+                  <div key={examType} className="border border-gray-200 rounded-lg p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                      {examType} Results
+                    </h4>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Subject
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Code
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Marks
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Percentage
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Grade
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Credits
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {exams.map((exam) => {
+                            const percentage = ((exam.marks_obtained / exam.max_marks) * 100).toFixed(1)
+                            const grade = getGrade(percentage)
+                            return (
+                              <tr key={exam.id}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {exam.subjects?.name}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {exam.subjects?.code}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {exam.marks_obtained}/{exam.max_marks}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {percentage}%
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                  <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                    grade === 'A+' || grade === 'A' ? 'bg-green-500 text-white' :
+                                    grade === 'B+' || grade === 'B' ? 'bg-blue-500 text-white' :
+                                    grade === 'C' ? 'bg-yellow-500 text-white' :
+                                    'bg-red-500 text-white'
+                                  }`}>
+                                    {grade}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {exam.subjects?.credits}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
 

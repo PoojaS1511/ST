@@ -35,7 +35,6 @@ function a11yProps(index) {
 }
 
 const StudentResults = () => {
-  console.log('[StudentResults] Component rendering');
   const [results, setResults] = useState([]);
   const [semesters, setSemesters] = useState([]);
   const [value, setValue] = useState(0);
@@ -43,178 +42,90 @@ const StudentResults = () => {
   const [error, setError] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const { user } = useAuth();
-  
-  // Log user authentication status
-  console.log('[StudentResults] User auth status:', user ? 'Authenticated' : 'Not authenticated');
-  if (user) {
-    console.log('[StudentResults] User ID:', user.id);
-    console.log('[StudentResults] User email:', user.email);
-  }
 
-  // Log when component mounts and unmounts
   useEffect(() => {
-    console.log('[StudentResults] Component mounted');
-    console.log('[StudentResults] Starting to fetch results...');
     fetchResults();
-    
-    return () => {
-      console.log('[StudentResults] Component unmounting');
-    };
   }, []);
-  
-  // Log when results or semesters change
-  useEffect(() => {
-    console.log('[StudentResults] Results updated:', {
-      resultsCount: results.length,
-      semesters: semesters,
-      currentSemester: value,
-      loading: loading,
-      error: error
-    });
-  }, [results, semesters, value, loading, error]);
 
   const fetchResults = async () => {
     try {
-      console.log('[StudentResults] Starting to fetch results...');
       setLoading(true);
       setError(null);
 
       if (!user) {
-        const errorMsg = 'User not authenticated';
-        console.error('[StudentResults]', errorMsg);
-        throw new Error(errorMsg);
+        throw new Error('User not authenticated');
       }
-      console.log('[StudentResults] User authenticated with ID:', user.id);
 
       // Fetch student's academic records
-      console.log('[StudentResults] Fetching student data for user:', user.id);
       const { data: studentData, error: studentError } = await supabase
         .from('students')
-        .select('id, enrollment_number, current_semester')
+        .select('id, enrollment_number')
         .eq('user_id', user.id)
         .single();
 
-      if (studentError) {
-        console.error('[StudentResults] Error fetching student data:', studentError);
-        throw studentError;
-      }
-      
-      if (!studentData) {
-        const errorMsg = 'Student record not found';
-        console.error('[StudentResults]', errorMsg);
-        throw new Error(errorMsg);
-      }
-      
-      console.log('[StudentResults] Student data retrieved:', {
-        id: studentData.id,
-        enrollment_number: studentData.enrollment_number,
-        current_semester: studentData.current_semester
-      });
+      if (studentError) throw studentError;
+      if (!studentData) throw new Error('Student record not found');
 
-      // Fetch internal marks for the student
-      console.log('[StudentResults] Fetching internal marks for student ID:', studentData.id);
-      const { data: internalMarks, error: marksError } = await supabase
-        .from('internal_marks')
+      // Fetch exam results for the student
+      const { data: resultsData, error: resultsError } = await supabase
+        .from('exam_results')
         .select(`
           id,
-          assessment_type,
           marks_obtained,
-          max_marks,
-          entered_at,
-          remarks,
+          grade,
+          exam_date,
           exam:exams(
             id,
             name,
+            max_marks,
             exam_type:exam_types(name),
             subject:subjects(name, code, semester)
-          ),
-          faculty_subject:faculty_subject_assignments(
-            faculty:faculty(
-              id,
-              name
-            ),
-            subject:subjects!faculty_subject_assignments_subject_id_fkey(
-              id,
-              name,
-              code,
-              semester
-            )
           )
         `)
         .eq('student_id', studentData.id)
-        .order('entered_at', { ascending: false });
+        .order('exam_date', { ascending: false });
 
-      if (marksError) {
-        console.error('[StudentResults] Error fetching internal marks:', marksError);
-        throw marksError;
-      }
-
-      console.log('[StudentResults] Raw internal marks data:', internalMarks);
+      if (resultsError) throw resultsError;
 
       // Transform the data to match the expected format
-      const formattedResults = internalMarks.map(mark => {
-        const subject = mark.exam?.subject || mark.faculty_subject?.subject;
-        const examType = mark.assessment_type || mark.exam?.exam_type?.name || 'Internal Assessment';
-        const semester = subject?.semester || studentData.current_semester || 1;
-        
-        const formatted = {
-          id: mark.id,
-          student_id: studentData.enrollment_number,
-          subject_id: subject?.name || 'Unknown Subject',
-          subject_code: subject?.code || '',
-          exam_type: examType,
-          max_marks: mark.max_marks || 0,
-          marks_obtained: mark.marks_obtained,
-          grade: calculateGrade(mark.marks_obtained, mark.max_marks),
-          exam_date: mark.entered_at,
-          semester: semester,
-          remarks: mark.remarks || '',
-          _raw: mark // Keep raw data for debugging
-        };
+      const formattedResults = resultsData.map(result => ({
+        id: result.id,
+        student_id: studentData.enrollment_number,
+        subject_id: result.exam?.subject?.name || 'Unknown Subject',
+        subject_code: result.exam?.subject?.code || '',
+        exam_type: result.exam?.exam_type?.name || 'Exam',
+        max_marks: result.exam?.max_marks || 0,
+        marks_obtained: result.marks_obtained,
+        grade: result.grade,
+        exam_date: result.exam_date,
+        semester: result.exam?.subject?.semester || 0
+      }));
 
-        console.log('[StudentResults] Formatted mark:', formatted);
-        return formatted;
-      });
-
-      console.log('[StudentResults] All formatted results:', formattedResults);
       setResults(formattedResults);
       
       // Extract unique semesters
       const uniqueSemesters = [...new Set(formattedResults.map(item => item.semester))]
         .sort((a, b) => a - b);
-      
-      console.log('[StudentResults] Unique semesters found:', uniqueSemesters);
       setSemesters(uniqueSemesters);
       
       if (uniqueSemesters.length > 0) {
-        console.log(`[StudentResults] Setting active semester to: ${uniqueSemesters[0]}`);
         setValue(uniqueSemesters[0]);
-      } else {
-        console.log('[StudentResults] No semesters found with marks');
       }
       
     } catch (error) {
-      const errorMsg = error.message || 'Failed to load results. Please try again later.';
-      console.error('[StudentResults] Error in fetchResults:', {
-        error,
-        message: error.message,
-        stack: error.stack
-      });
-      
-      setError(errorMsg);
+      console.error('Error fetching results:', error);
+      setError(error.message || 'Failed to load results. Please try again later.');
       setSnackbar({
         open: true,
-        message: errorMsg,
+        message: error.message || 'Failed to load results',
         severity: 'error'
       });
     } finally {
-      console.log('[StudentResults] Finished loading results');
       setLoading(false);
     }
   };
 
   const handleChange = (event, newValue) => {
-    console.log(`[StudentResults] Semester tab changed from ${value} to ${newValue}`);
     setValue(newValue);
   };
 
@@ -231,35 +142,17 @@ const StudentResults = () => {
   };
 
   const getSubjectResults = (subject, semester) => {
-    const subjectResults = results.filter(
+    return results.filter(
       result => result.subject_id === subject && result.semester === semester
     );
-    console.log(`[StudentResults] getSubjectResults - Subject: ${subject}, Semester: ${semester}, Found: ${subjectResults.length} results`);
-    return subjectResults;
-  };
-
-  // Helper function to calculate grade based on marks
-  const calculateGrade = (marksObtained, maxMarks) => {
-    if (!marksObtained || !maxMarks) return 'N/A';
-    
-    const percentage = (marksObtained / maxMarks) * 100;
-    
-    if (percentage >= 90) return 'A+';
-    if (percentage >= 80) return 'A';
-    if (percentage >= 70) return 'B';
-    if (percentage >= 60) return 'C';
-    if (percentage >= 50) return 'D';
-    return 'F';
   };
 
   const getSubjects = (semester) => {
-    const subjects = [...new Set(
+    return [...new Set(
       results
         .filter(result => result.semester === semester)
         .map(result => result.subject_id)
     )];
-    console.log(`[StudentResults] getSubjects - Semester: ${semester}, Found: ${subjects.length} subjects`);
-    return subjects;
   };
 
   const calculateSGPA = (semester) => {

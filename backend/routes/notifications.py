@@ -329,7 +329,7 @@ def get_student_notifications(student_id):
 def get_faculty_notifications(faculty_id):
     """Get notifications relevant to a specific faculty member"""
     # Validate faculty exists
-    faculty_result = supabase.table('faculties').select('id').eq('id', faculty_id).execute()
+    faculty_result = supabase.table('faculty').select('id').eq('id', faculty_id).execute()
     if not faculty_result.data:
         return jsonify({"success": False, "error": "Faculty not found"}), 404
 

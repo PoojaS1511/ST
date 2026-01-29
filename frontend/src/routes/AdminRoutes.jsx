@@ -8,8 +8,6 @@ import AdminDashboard from '../pages/admin/AdminDashboard';
 import AdminOverview from '../components/admin/AdminOverview';
 import StudentManagement from '../components/admin/StudentManagement';
 import AddStudent from '../components/admin/AddStudent';
-import AddUsers from '../components/admin/AddUsers';
-import UserCreatedSuccess from '../components/admin/UserCreatedSuccess';
 import StudentCredentials from '../components/admin/StudentCredentials';
 import FeesList from '../components/admin/FeesListWithErrorBoundary';
 import FeeDetail from '../components/admin/FeeDetail';
@@ -17,24 +15,19 @@ import PaymentForm from '../components/admin/PaymentForm';
 import FeeManagement from '../components/admin/FeeManagement';
 import NewFeeForm from '../components/admin/NewFeeForm';
 import NotificationManagement from '../pages/admin/notifications/NotificationManagement';
-import NotificationRecipients from '../pages/admin/notifications/NotificationRecipients';
 import AttendanceManagement from '../components/admin/AttendanceManagement';
 import MarksEntry from '../components/admin/MarksEntry';
-import Admissions from '../components/admin/NewAdmissions';
+import Admissions from '../components/admin/Admissions';
+import HostelManagement from '../components/admin/HostelManagement';
 import ReportsAnalytics from '../components/admin/ReportsAnalytics';
 import AIAssistant from '../components/admin/AIAssistant';
 import Settings from '../components/admin/Settings';
 import TestComponent from '../components/admin/TestComponent';
-import InternalMarks from '../pages/admin/InternalMarks';
 
 // Faculty
-import FacultyManagement from '../pages/admin/FacultyManagement';
-import FacultyAttendance from '../pages/admin/FacultyAttendance';
-import FacultyCredentials from '../pages/admin/FacultyCredentials';
-import FacultyMapping from '../pages/admin/FacultyMapping';
-import RelievingRequestManagement from '../pages/admin/hr/RelievingRequestManagement';
-import DocumentManager from '../pages/admin/hr/DocumentManager';
-import ClearanceManagement from '../pages/admin/clearance/Index';
+import FacultyDashboard from '../pages/faculty/admin faculty/admin/Dashboard';
+import FacultyManagement from '../pages/faculty/admin faculty/admin/FacultyManagement';
+import FacultyAttendance from '../pages/faculty/admin faculty/admin/Attendance';
 // Infrastructure & Facilities
 import FacilitiesManagement from '../pages/admin/FacilitiesManagement';
 import InfrastructureFacilities from '../pages/admin/infrastructure/InfrastructureFacilities';
@@ -88,10 +81,6 @@ import StudentResults from '../components/academics/StudentResults';
 import MarksStagingResults from '../components/academics/MarksStagingResults';
 import ExamAnalytics from '../pages/admin/academics/ExamAnalytics';
 
-// Hostel
-import StatusManagement from '../components/admin/StatusManagement';
-import VotesManagement from '../components/admin/hostel/VotesManagement';
-
 // Clubs
 import ClubsDashboard from '../components/admin/clubs/ClubsDashboard';
 import ClubMembers from '../components/admin/clubs/ClubMembers';
@@ -107,18 +96,6 @@ import PerformanceAnalytics from '../pages/admin/analytics/PerformanceAnalytics'
 import FeeAnalytics from '../pages/admin/analytics/FeeAnalytics';
 import EnrollmentAnalytics from '../pages/admin/analytics/EnrollmentAnalytics';
 import UtilizationAnalytics from '../pages/admin/analytics/UtilizationAnalytics';
-import FacultySchedule from '../pages/admin/FacultySchedule';
-import ResearchPapers from '../pages/admin/ResearchPapers';
-import HostelManagement from '../pages/admin/hostel/index.jsx';
-import FoodMenu from '../pages/admin/hostel/FoodMenu';
-import HostelRules from '../pages/admin/hostel/HostelRules';
-import Allocations from '../pages/admin/hostel/Allocations';
-import Announcements from '../pages/admin/hostel/Announcements';
-import Feedbacks from '../pages/admin/hostel/Feedbacks';
-import LeaveManagement from '../pages/admin/hostel/LeaveManagement';
-import MenuItemsManagement from '../components/hostel/MenuItemsManagement';
-import PollsManagement from '../components/admin/PollsManagement';
-import SignupCredentials from '../pages/admin/students/SignupCredentials';
 
 const AdminRoutes = () => {
   return (
@@ -131,11 +108,8 @@ const AdminRoutes = () => {
         <Route path="students">
           <Route index element={<StudentManagement />} />
           <Route path="add" element={<AddStudent />} />
-          <Route path="addusers" element={<AddUsers />} />
-          <Route path="success" element={<UserCreatedSuccess />} />
           <Route path=":id/edit" element={<AddStudent />} />
           <Route path="credentials" element={<StudentCredentials />} />
-          <Route path="signup-credentials" element={<SignupCredentials />} />
         </Route>
         
         {/* Fees Management */}
@@ -149,25 +123,15 @@ const AdminRoutes = () => {
         </Route>
         
         {/* Notifications */}
-        <Route path="notifications">
-          <Route index element={<NotificationManagement />} />
-          <Route path="recipients" element={<NotificationRecipients />} />
-        </Route>
+        <Route path="notifications" element={<NotificationManagement />} />
         
         {/* Faculty Management */}
         <Route path="faculty">
-          <Route index element={<FacultyManagement />} />
-          <Route path="all" element={<FacultyManagement />} />
+          <Route index element={<FacultyDashboard />} />
+          <Route path="dashboard" element={<FacultyDashboard />} />
+          <Route path="management" element={<FacultyManagement />} />
           <Route path="attendance" element={<FacultyAttendance />} />
-          <Route path="credentials" element={<FacultyCredentials />} />
-          <Route path="mapping" element={<FacultyMapping />} />
-          <Route path="research-papers" element={<ResearchPapers />} />
         </Route>
-        
-        {/* HR Management */}
-        <Route path="hr/relieving-requests" element={<RelievingRequestManagement />} />
-        <Route path="hr/document-manager" element={<DocumentManager />} />
-        <Route path="hr/clearance" element={<ClearanceManagement />} />
         
         {/* Test Route */}
         <Route 
@@ -191,20 +155,6 @@ const AdminRoutes = () => {
         
         {/* Admissions */}
         <Route path="admissions" element={<Admissions />} />
-        
-        {/* Hostel Management */}
-        <Route path="hostel" element={<HostelManagement />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<HostelManagement />} />
-          <Route path="announcements" element={<Announcements />} />
-          <Route path="food-menu" element={<FoodMenu />} />
-          <Route path="menu-items" element={<MenuItemsManagement />} />
-          <Route path="rules" element={<HostelRules />} />
-          <Route path="allocations" element={<Allocations />} />
-          <Route path="polls" element={<PollsManagement />} />
-          <Route path="feedbacks" element={<Feedbacks />} />
-          <Route path="leave-management" element={<LeaveManagement />} />
-        </Route>
         
         {/* Infrastructure */}
         <Route path="infrastructure">
@@ -245,9 +195,6 @@ const AdminRoutes = () => {
           <Route path="lost-found" element={<LostFound />} />
         </Route>
         
-        {/* Faculty Schedule */}
-        <Route path="faculty-schedule" element={<FacultySchedule />} />
-        
         {/* Security */}
         <Route path="security">
           <Route index element={<SecurityDashboard />} />
@@ -258,22 +205,14 @@ const AdminRoutes = () => {
         <Route path="facilities" element={<FacilitiesManagement />} />
         
         {/* Hostel */}
-        <Route path="hostel">
-          <Route index element={<HostelManagement />} />
-          <Route path="announcements" element={<Announcements />} />
-          <Route path="food-menu" element={<FoodMenu />} />
-          <Route path="rules" element={<HostelRules />} />
-          <Route path="status" element={<StatusManagement />} />
-          <Route path="votes" element={<VotesManagement />} />
-        </Route>
+        <Route path="hostel" element={<HostelManagement />} />
         
         {/* Main Analytics Dashboard */}
         <Route path="analytics" element={<AnalyticsDashboard />}>
-          <Route index element={<Navigate to="overview" replace />} />
-          <Route path="overview" element={<RealReportsAnalytics />} />
-          <Route path="admissions" element={<AdmissionAnalytics />} />
+          <Route index element={<Navigate to="performance" replace />} />
           <Route path="performance" element={<PerformanceAnalytics />} />
-          <Route path="fees" element={<FeeAnalytics />} />
+          <Route path="fee" element={<FeeAnalytics />} />
+          <Route path="admission" element={<AdmissionAnalytics />} />
           <Route path="enrollment" element={<EnrollmentAnalytics />} />
           <Route path="utilization" element={<UtilizationAnalytics />} />
         </Route>
@@ -333,9 +272,6 @@ const AdminRoutes = () => {
           <Route path=":clubId/awards" element={<ClubAwards />} />
           <Route path=":clubId/edit" element={<ClubForm />} />
         </Route>
-        
-        {/* Internal Marks */}
-        <Route path="internal-marks" element={<InternalMarks />} />
         
         {/* Test Component */}
         <Route path="test" element={<TestComponent />} />

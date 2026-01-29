@@ -35,13 +35,6 @@ const StudentDetails = () => {
       try {
         setLoading(true);
         const data = await fetchStudentById(id);
-        
-        if (!data) {
-          toast.error('Student not found');
-          navigate('/admin/students');
-          return;
-        }
-        
         setStudent(data);
         setFormData({
           full_name: data.full_name || '',

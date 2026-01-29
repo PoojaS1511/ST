@@ -116,55 +116,8 @@ class SupabaseService {
       };
     }
   }
-
-  // Exam Methods
-  static async getExams(filters = {}) {
-    try {
-      let query = supabase
-        .from('exams')
-        .select('*');
-      
-      // Apply filters
-      if (filters.course_id) {
-        query = query.eq('course_id', filters.course_id);
-      }
-      if (filters.subject_id) {
-        query = query.eq('subject_id', filters.subject_id);
-      }
-      if (filters.semester) {
-        query = query.eq('semester', filters.semester);
-      }
-      if (filters.academic_year) {
-        query = query.eq('academic_year', filters.academic_year);
-      }
-      if (filters.exam_type) {
-        query = query.eq('exam_type', filters.exam_type);
-      }
-
-      // Order by date descending by default
-      query = query.order('date', { ascending: false });
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      return { 
-        success: true, 
-        data: data || [] 
-      };
-    } catch (error) {
-      console.error('Error fetching exams:', error);
-      return { 
-        success: false, 
-        message: error.message || 'Failed to fetch exams',
-        data: [] 
-      };
-    }
-  }
 }
 
-// Export the SupabaseService class as default
-export default SupabaseService;
-
-// Also export supabase client and SupabaseService as named exports
+export default supabase;
+// Also export as named export for backward compatibility
 export { supabase, SupabaseService };

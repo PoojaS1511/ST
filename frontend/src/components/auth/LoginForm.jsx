@@ -93,8 +93,8 @@ const LoginForm = () => {
 
           // Handle role-specific redirects
           if (role === 'teacher' || role === 'faculty') {
-            const redirectUrl = '/faculty/dashboard';
-            console.log('Redirecting to faculty dashboard:', redirectUrl);
+            const redirectUrl = 'http://localhost:8081';
+            console.log('Redirecting to faculty app:', redirectUrl);
             // Store user data before redirect
             const userData = {
               id: user.id || userId,

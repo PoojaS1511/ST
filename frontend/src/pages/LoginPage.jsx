@@ -57,6 +57,7 @@ const LoginPage = () => {
 
       // Call the login function from AuthContext
       const result = await login(email, password);
+
       console.log('[LoginPage] Login result:', result);
 
       if (!result?.success) {
@@ -77,17 +78,19 @@ const LoginPage = () => {
         admin: '/admin/dashboard',
         student: '/student/dashboard',
         faculty: '/faculty/dashboard',
-        hod: '/faculty/dashboard', // HODs go to faculty dashboard
         parent: '/parent/dashboard',
         driver: '/driver/dashboard'
       };
 
       // Get target path with fallback to student dashboard
       const targetPath = rolePaths[userRole] || '/student/dashboard';
+
       console.log('[LoginPage] Redirecting to:', targetPath);
 
-      // Use window.location for a full page refresh to ensure all context is loaded
-      window.location.href = targetPath;
+      // Use a small delay to ensure state is updated before redirect
+      setTimeout(() => {
+        navigate(targetPath, { replace: true });
+      }, 100);
 
     } catch (err) {
       console.error('[LoginPage] Login error:', err);

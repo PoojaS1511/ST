@@ -324,7 +324,7 @@ def delete_subject(subject_id):
 @handle_errors
 def get_faculty():
     """Get all faculty members with optional filtering"""
-    query = supabase.table('faculties').select('''
+    query = supabase.table('faculty').select('''
         *,
         departments (
             id,
@@ -351,7 +351,7 @@ def get_faculty():
 @handle_errors
 def get_single_faculty(faculty_id):
     """Get a single faculty member by ID"""
-    result = supabase.table('faculties').select('''
+    result = supabase.table('faculty').select('''
         *,
         departments (
             id,
@@ -406,7 +406,7 @@ def create_faculty():
         'updated_at': datetime.now().isoformat()
     }
 
-    result = supabase.table('faculties').insert(faculty_data).execute()
+    result = supabase.table('faculty').insert(faculty_data).execute()
     return jsonify({"success": True, "data": result.data[0] if result.data else {}}), 201
 
 @academics_bp.route('/faculty/<int:faculty_id>', methods=['PUT'])
@@ -600,7 +600,7 @@ def get_marks():
 @handle_errors
 def get_designations():
     """Get list of all designations"""
-    result = supabase.table('faculties').select('designation').execute()
+    result = supabase.table('faculty').select('designation').execute()
     designations = list(set([item['designation'] for item in result.data if item['designation']]))
     return jsonify({"success": True, "data": sorted(designations)})
 

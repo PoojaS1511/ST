@@ -67,12 +67,6 @@ const StudentSidebar = () => {
           icon: CalendarDaysIcon
         },
         { 
-          name: 'Results',
-          path: 'results',
-          fullPath: '/student/results',
-          icon: DocumentTextIcon
-        },
-        { 
           name: 'Examinations',
           path: 'examinations',
           fullPath: '/student/examinations',
@@ -81,104 +75,20 @@ const StudentSidebar = () => {
       ]
     },
     { 
-      name: 'Fee Structure', 
-      path: 'fee-structure',
-      fullPath: '/student/fee-structure',
+      name: 'Fees & Admission', 
+      path: 'fees',
+      fullPath: '/student/fees',
       icon: CurrencyDollarIcon,
       color: 'text-yellow-600',
-      bgColor: 'bg-yellow-100',
-      hasChildren: true,
-      children: [
-        { 
-          name: 'My Fees',
-          path: 'my-fees',
-          fullPath: '/student/my-fees',
-          icon: CurrencyDollarIcon
-        },
-        { 
-          name: 'Fee Structure',
-          path: 'fee-details',
-          fullPath: '/student/fee-details',
-          icon: DocumentTextIcon
-        }
-      ]
+      bgColor: 'bg-yellow-100'
     },
     { 
       name: 'Hostel', 
       path: 'hostel',
+      fullPath: '/student/hostel',
       icon: HomeIcon,
       color: 'text-indigo-600',
-      bgColor: 'bg-indigo-100',
-      hasChildren: true,
-      children: [
-      
-        { 
-          name: 'Announcements',
-          path: 'announcements',
-          fullPath: '/student/announcements',
-          icon: BellIcon
-        },
-        { 
-          name: 'Hostel Menu',
-          path: 'hostel-menu',
-          fullPath: '/student/hostel-menu',
-          icon: DocumentTextIcon
-        },
-        { 
-          name: 'Mess Status',
-          path: 'mess-status',
-          fullPath: '/student/mess-status',
-          icon: DocumentTextIcon
-        },
-        { 
-          name: 'Mess Feedback',
-          path: 'mess-feedback',
-          fullPath: '/student/mess-feedback',
-          icon: DocumentTextIcon
-        },
-        { 
-          name: 'Hostel Feedbacks',
-          path: 'hostel-feedbacks',
-          fullPath: '/student/hostel-feedbacks',
-          icon: DocumentTextIcon
-        },
-        { 
-          name: 'Rules',
-          path: 'rules',
-          fullPath: '/student/rules',
-          icon: DocumentTextIcon
-        },
-        { 
-          name: 'Leave Request',
-          path: 'leave-request',
-          fullPath: '/student/leave-request',
-          icon: DocumentTextIcon
-        },
-        { 
-          name: 'Leave History',
-          path: 'leave-history',
-          fullPath: '/student/leave-history',
-          icon: DocumentTextIcon
-        },
-        { 
-          name: 'Room Allocation',
-          path: 'room-allocation',
-          fullPath: '/student/room-allocation',
-          icon: HomeIcon
-        },
-        { 
-          name: 'Items',
-          path: 'items',
-          fullPath: '/student/items',
-          icon: DocumentTextIcon
-        },
-        { 
-          name: 'Votes',
-          path: 'votes',
-          fullPath: '/student/votes',
-          icon: DocumentTextIcon
-        }
-      ]
+      bgColor: 'bg-indigo-100'
     },
     { 
       name: 'Transport', 

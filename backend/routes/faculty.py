@@ -16,8 +16,8 @@ def get_faculty():
         limit = int(request.args.get('limit', 10))
         search = request.args.get('search', '')
         department_id = request.args.get('department_id')
-
-        query = supabase.table('faculties').select("""
+        
+        query = supabase.table('faculty').select("""
             *,
             profiles (
                 full_name,
@@ -38,8 +38,8 @@ def get_faculty():
         
         offset = (page - 1) * limit
         response = query.range(offset, offset + limit - 1).order('created_at', desc=True).execute()
-
-        count_response = supabase.table('faculties').select('id', count='exact').execute()
+        
+        count_response = supabase.table('faculty').select('id', count='exact').execute()
         total_count = count_response.count
         
         return jsonify({

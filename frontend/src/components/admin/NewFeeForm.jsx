@@ -24,7 +24,6 @@ import {
   Save as SaveIcon,
   Cancel as CancelIcon
 } from '@mui/icons-material';
-import { supabase } from '../../lib/supabase';
 import { feesService } from '../../services/feesService';
 
 const NewFeeForm = () => {
@@ -34,21 +33,32 @@ const NewFeeForm = () => {
   const [students, setStudents] = useState([]);
   const [feeStructures, setFeeStructures] = useState([]);
   const [formData, setFormData] = useState({
-    student_id: '',
+    studentId: '',
+    feeStructureId: '',
     amount: '',
-    due_date: '',
-    status: 'unpaid',
-    fee_type: 'Tuition',
-    payment_date: new Date().toISOString().split('T')[0],
-    payment_mode: 'cash',
-    transaction_id: '',
-    late_fee: '0',
+    paymentMethod: 'cash',
+    transactionId: '',
+    academicYear: new Date().getFullYear(),
     semester: '1',
-    academic_year: new Date().getFullYear().toString(),
     notes: ''
   });
   
-  // Fetch students and fee types
+  // Update form data when fee structure changes
+  useEffect(() => {
+    if (formData.feeStructureId) {
+      const selectedFee = feeStructures.find(fee => fee.id === formData.feeStructureId);
+      if (selectedFee) {
+        setFormData(prev => ({
+          ...prev,
+          amount: (selectedFee.amount || '').toString(),
+          academicYear: selectedFee.academicYear || prev.academicYear,
+          feeType: selectedFee.feeType
+        }));
+      }
+    }
+  }, [formData.feeStructureId, feeStructures]);
+
+  // Fetch students and fee structures
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -57,20 +67,30 @@ const NewFeeForm = () => {
         // Fetch students using the feesService
         const studentsData = await feesService.getStudents();
         
-        // Define common fee types instead of fetching fee structures
-        const commonFeeTypes = [
-          { id: 'Tuition', name: 'Tuition Fee', amount: 50000 },
-          { id: 'Hostel', name: 'Hostel Fee', amount: 25000 },
-          { id: 'Library', name: 'Library Fee', amount: 5000 },
-          { id: 'Lab', name: 'Laboratory Fee', amount: 10000 },
-          { id: 'Transport', name: 'Transport Fee', amount: 8000 },
-          { id: 'Exam', name: 'Examination Fee', amount: 3000 },
-          { id: 'Sports', name: 'Sports Fee', amount: 2000 },
-          { id: 'Other', name: 'Other Fee', amount: 0 }
-        ];
+        // Get all fee structures with their actual IDs
+        const allFees = await feesService.getAllFees();
+        // Create a map of unique fee structures with their actual IDs
+        const uniqueFeeStructures = [];
+        const seen = new Set();
+        
+        allFees.forEach(fee => {
+          if (fee.id && fee.feeType && fee.academicYear) {
+            const key = `${fee.feeType}-${fee.academicYear}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              uniqueFeeStructures.push({
+                id: fee.id, // Use the actual UUID from the database
+                name: `${fee.feeType} (${fee.academicYear})`,
+                feeType: fee.feeType,
+                academicYear: fee.academicYear,
+                amount: fee.amount // Include the amount for pre-filling
+              });
+            }
+          }
+        });
         
         setStudents(studentsData || []);
-        setFeeStructures(commonFeeTypes);
+        setFeeStructures(uniqueFeeStructures);
       } catch (err) {
         console.error('Error fetching data:', err);
         setError('Failed to load required data');
@@ -86,18 +106,10 @@ const NewFeeForm = () => {
     const { name, value } = e.target;
     console.log(`Form field changed - ${name}:`, value);
     
-    // If fee type is being changed, update the amount
-    if (name === 'fee_type') {
+    // If fee structure is being changed, log the selected fee structure
+    if (name === 'feeStructureId') {
       const selectedFee = feeStructures.find(fee => fee.id === value);
-      console.log('Selected fee type:', selectedFee);
-      if (selectedFee) {
-        setFormData(prev => ({
-          ...prev,
-          fee_type: value,
-          amount: selectedFee.amount.toString()
-        }));
-        return;
-      }
+      console.log('Selected fee structure:', selectedFee);
     }
     
     setFormData(prev => ({
@@ -115,48 +127,38 @@ const NewFeeForm = () => {
       console.log('Form data before submission:', formData);
       
       // Validate required fields
-      if (!formData.student_id) {
+      if (!formData.studentId) {
         throw new Error('Please select a student');
       }
       
-      if (!formData.amount || parseFloat(formData.amount) <= 0) {
-        throw new Error('Please enter a valid amount');
+      if (!formData.feeStructureId) {
+        throw new Error('Please select a fee structure');
+      }
+      
+      const selectedFee = feeStructures.find(fee => fee.id === formData.feeStructureId);
+      if (!selectedFee) {
+        throw new Error('Selected fee structure not found');
       }
 
-      if (!formData.due_date) {
-        throw new Error('Please select a due date');
-      }
-
-      // Prepare payment data matching the fee_payments table schema
+      // Prepare payment data with proper types
       const paymentData = {
-        student_id: formData.student_id,
-        amount: parseFloat(formData.amount),
-        due_date: formData.due_date,
-        status: formData.status,
-        fee_type: formData.fee_type,
-        payment_date: formData.status === 'paid' ? formData.payment_date : null,
-        payment_mode: formData.status === 'paid' ? formData.payment_mode : null,
-        transaction_id: formData.status === 'paid' ? formData.transaction_id || null : null,
-        late_fee: parseFloat(formData.late_fee) || 0,
-        semester: parseInt(formData.semester),
-        academic_year: formData.academic_year
+        student_id: formData.studentId,
+        fee_structure_id: selectedFee.id, // Use the ID from the selected fee structure
+        amount: parseFloat(formData.amount) || 0,
+        payment_method: formData.paymentMethod || 'cash',
+        transaction_id: formData.transactionId || `TXN-${Date.now()}`,
+        fee_type: selectedFee.feeType || 'Tuition',
+        academic_year: selectedFee.academicYear || new Date().getFullYear().toString(),
+        semester: formData.semester || '1',
+        status: 'paid',
+        payment_date: new Date().toISOString(),
+        notes: formData.notes || ''
       };
       
-      console.log('Submitting payment with data:', paymentData);
-      
-      // Direct Supabase insertion to match table schema
-      const { data, error } = await supabase
-        .from('fee_payments')
-        .insert([paymentData])
-        .select()
-        .single();
+      console.log('Selected fee structure for payment:', selectedFee);
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
-      
-      console.log('Payment recorded successfully:', data);
+      console.log('Submitting payment with data:', paymentData);
+      await feesService.recordPayment(paymentData);
       
       // Show success message and redirect
       navigate('/admin/fees', { 
@@ -176,7 +178,7 @@ const NewFeeForm = () => {
       let errorMessage = err.message || 'Failed to record payment';
       
       if (errorMessage.includes('violates foreign key constraint')) {
-        errorMessage = 'Invalid student reference. Please check the selected student.';
+        errorMessage = 'Invalid student or fee structure reference. Please check the selected values.';
       } else if (errorMessage.includes('invalid input syntax')) {
         errorMessage = 'Invalid data format. Please check your input and try again.';
       } else if (errorMessage.includes('network')) {
@@ -229,8 +231,8 @@ const NewFeeForm = () => {
                   <FormControl fullWidth margin="normal" required>
                     <InputLabel>Student</InputLabel>
                     <Select
-                      name="student_id"
-                      value={formData.student_id}
+                      name="studentId"
+                      value={formData.studentId}
                       onChange={handleChange}
                       label="Student"
                       required
@@ -246,12 +248,12 @@ const NewFeeForm = () => {
                 
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth margin="normal" required>
-                    <InputLabel>Fee Type</InputLabel>
+                    <InputLabel>Fee Structure</InputLabel>
                     <Select
-                      name="fee_type"
-                      value={formData.fee_type}
+                      name="feeStructureId"
+                      value={formData.feeStructureId}
                       onChange={handleChange}
-                      label="Fee Type"
+                      label="Fee Structure"
                       required
                     >
                       {feeStructures.map((fee) => (
@@ -278,31 +280,19 @@ const NewFeeForm = () => {
                 </Grid>
                 
                 <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    margin="normal"
-                    label="Due Date"
-                    name="due_date"
-                    type="date"
-                    value={formData.due_date}
-                    onChange={handleChange}
-                    required
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
                   <FormControl fullWidth margin="normal" required>
-                    <InputLabel>Status</InputLabel>
+                    <InputLabel>Payment Method</InputLabel>
                     <Select
-                      name="status"
-                      value={formData.status}
+                      name="paymentMethod"
+                      value={formData.paymentMethod}
                       onChange={handleChange}
-                      label="Status"
+                      label="Payment Method"
                     >
-                      <MenuItem value="paid">Paid</MenuItem>
-                      <MenuItem value="unpaid">Unpaid</MenuItem>
-                      <MenuItem value="partial">Partial</MenuItem>
+                      <MenuItem value="cash">Cash</MenuItem>
+                      <MenuItem value="card">Card</MenuItem>
+                      <MenuItem value="bank_transfer">Bank Transfer</MenuItem>
+                      <MenuItem value="upi">UPI</MenuItem>
+                      <MenuItem value="other">Other</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
@@ -311,60 +301,25 @@ const NewFeeForm = () => {
                   <TextField
                     fullWidth
                     margin="normal"
-                    label="Late Fee"
-                    name="late_fee"
-                    type="number"
-                    value={formData.late_fee}
+                    label="Transaction ID (if any)"
+                    name="transactionId"
+                    value={formData.transactionId}
                     onChange={handleChange}
-                    inputProps={{ min: 0, step: '0.01' }}
                   />
                 </Grid>
                 
-                {formData.status === 'paid' && (
-                  <>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        margin="normal"
-                        label="Payment Date"
-                        name="payment_date"
-                        type="date"
-                        value={formData.payment_date}
-                        onChange={handleChange}
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    </Grid>
-                    
-                    <Grid item xs={12} md={6}>
-                      <FormControl fullWidth margin="normal">
-                        <InputLabel>Payment Mode</InputLabel>
-                        <Select
-                          name="payment_mode"
-                          value={formData.payment_mode}
-                          onChange={handleChange}
-                          label="Payment Mode"
-                        >
-                          <MenuItem value="cash">Cash</MenuItem>
-                          <MenuItem value="card">Card</MenuItem>
-                          <MenuItem value="bank_transfer">Bank Transfer</MenuItem>
-                          <MenuItem value="upi">UPI</MenuItem>
-                          <MenuItem value="other">Other</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                    
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        margin="normal"
-                        label="Transaction ID"
-                        name="transaction_id"
-                        value={formData.transaction_id}
-                        onChange={handleChange}
-                      />
-                    </Grid>
-                  </>
-                )}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    margin="normal"
+                    label="Academic Year"
+                    name="academicYear"
+                    type="number"
+                    value={formData.academicYear}
+                    onChange={handleChange}
+                    required
+                  />
+                </Grid>
                 
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth margin="normal" required>
@@ -382,18 +337,6 @@ const NewFeeForm = () => {
                       ))}
                     </Select>
                   </FormControl>
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    margin="normal"
-                    label="Academic Year"
-                    name="academic_year"
-                    value={formData.academic_year}
-                    onChange={handleChange}
-                    required
-                  />
                 </Grid>
                 
                 <Grid item xs={12}>

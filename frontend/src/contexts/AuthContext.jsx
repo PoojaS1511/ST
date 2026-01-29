@@ -95,37 +95,8 @@ const fetchUserData = async (userId, userEmail) => {
       return result;
     }
     
-    // Check faculty table if not found in students table
-    console.log('[Auth] Checking faculty table for user:', userEmail);
-    const { data: facultyData, error: facultyError } = await supabase
-      .from('faculties')
-      .select('id, full_name, email, user_id, designation')
-      .eq('email', userEmail)
-      .maybeSingle();
-    
-    if (facultyError) {
-      console.warn('[Auth] Faculty query error:', facultyError);
-      return { role: null, userData: null };
-    }
-    
-    if (facultyData) {
-      const result = { 
-        role: 'faculty',
-        userData: { 
-          id: facultyData.id,
-          name: facultyData.full_name,
-          email: facultyData.email,
-          role: 'faculty',
-          user_id: facultyData.user_id,
-          designation: facultyData.designation
-        }
-      };
-      userDataCache.set(cacheKey, result);
-      return result;
-    }
-    
-    // If we get here, the user is authenticated but not in any role table
-    console.log('[Auth] User not found in any role table');
+    // If we get here, the user is authenticated but not in the students table
+    console.log('[Auth] User not found in students table');
     return { role: null, userData: null };
     
   } catch (error) {
@@ -165,81 +136,43 @@ export const AuthProvider = ({ children }) => {
       }
       
       const userEmail = newSession.user.email?.toLowerCase();
-      const authUserId = newSession.user.id;
+      const currentPath = window.location.pathname;
       
-      // First, check if this is a FACULTY
-      const { data: facultyData, error: facultyError } = await supabase
-        .from('faculties')
-        .select('id, full_name, employee_id, designation, is_hod, department_id, status')
-        .eq('user_id', authUserId)
-        .single();
-
-      if (facultyData && !facultyError) {
-        // This is a faculty member!
-        const facultyUser = {
+      // Check for admin email first
+      const isAdminEmail = userEmail?.endsWith('@college.edu') || userEmail === 'admin@college.edu';
+      
+      if (isAdminEmail) {
+        const adminUser = {
           ...newSession.user,
-          role: facultyData.is_hod ? 'hod' : 'faculty',
-          name: facultyData.full_name,
+          role: 'admin',
+          name: newSession.user.user_metadata?.full_name || userEmail.split('@')[0],
           email: userEmail,
-          id: facultyData.id,
-          faculty: {
-            id: facultyData.id,
-            full_name: facultyData.full_name,
-            employee_id: facultyData.employee_id,
-            designation: facultyData.designation,
-            is_hod: facultyData.is_hod,
-            department_id: facultyData.department_id,
-            status: facultyData.status
-          }
+          id: newSession.user.id
         };
-
+        
         if (isMounted.current) {
-          setUser(facultyUser);
+          setUser(adminUser);
           setSession(newSession);
           
-          // Redirect to faculty dashboard if not already there
-          const currentPath = window.location.pathname;
-          if (!currentPath.startsWith('/faculty')) {
-            navigate('/faculty/dashboard', { replace: true });
+          // Only redirect if not already on an admin route
+          if (!currentPath.startsWith('/admin')) {
+            navigate('/admin/dashboard', { replace: true });
           }
         }
-        
-        return facultyUser;
+        return adminUser;
       }
       
-      // If not faculty, check if it's a student
+      // For non-admin users, fetch user data
       const { role, userData } = await fetchUserData(newSession.user.id, userEmail);
       const userWithRole = {
         ...newSession.user,
-        role: role || 'user',
+        role: role || 'student',
         ...(userData || {})
       };
       
       if (isMounted.current) {
         setUser(userWithRole);
         setSession(newSession);
-        
-        // Role-based redirection
-        const currentPath = window.location.pathname;
-        const userRole = userWithRole.role?.toLowerCase();
-        
-        // Only redirect if not already on a role-specific route
-        if (!currentPath.startsWith(`/${userRole}`) && userRole) {
-          switch(userRole) {
-            case 'admin':
-              navigate('/admin/dashboard', { replace: true });
-              break;
-            case 'student':
-              navigate('/student/dashboard', { replace: true });
-              break;
-            default:
-              // For users with no specific role, redirect to login
-              setUser(null);
-              setSession(null);
-              navigate('/login');
-              throw new Error('Access denied: Invalid role');
-          }
-        }
       }
       
       return userWithRole;
@@ -268,7 +201,7 @@ export const AuthProvider = ({ children }) => {
       throw new Error(errorMsg);
     }
     
-    // Clear any previous errors and set loading state
+    // Clear any previous errors
     setError('');
     setLoading(true);
     
@@ -277,17 +210,11 @@ export const AuthProvider = ({ children }) => {
       email = email.trim().toLowerCase();
       console.log('[Auth] Attempting login for:', email);
       
-      // 1. First, try to authenticate with Supabase
-      const { data: authData, error: signInError } = await Promise.race([
-        supabase.auth.signInWithPassword({
-          email,
-          password: password.trim(),
-        }),
-        // Add a timeout to prevent hanging
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Login request timed out')), 10000)
-        )
-      ]);
+      // Sign in with email and password
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: password.trim(),
+      });
 
       if (signInError) {
         console.error('[Auth] Sign in error:', signInError);
@@ -308,25 +235,13 @@ export const AuthProvider = ({ children }) => {
       if (!authData?.session) {
         throw new Error('No session returned from authentication');
       }
-
-      // 2. Update UI to show successful authentication
-      const userRole = authData.session.user?.user_metadata?.role || 
-                      authData.session.user?.app_metadata?.role;
       
-      // 3. Return immediately with basic user data
-      const userData = {
-        id: authData.session.user.id,
-        email: email,
-        role: userRole || 'student', // Default role
-        name: authData.session.user.user_metadata?.full_name || email.split('@')[0]
-      };
-      
-      // 4. Update user state in the background
-      updateUserState(authData.session).catch(console.error);
+      // Update user state with the new session
+      const updatedUser = await updateUserState(authData.session);
       
       return {
         success: true,
-        user: userData,
+        user: updatedUser,
         session: authData.session
       };
       
@@ -335,9 +250,7 @@ export const AuthProvider = ({ children }) => {
       if (isMounted.current) {
         setError(error.message || 'An unexpected error occurred during login');
       }
-      // Ensure we're signed out if there was an error
-      await supabase.auth.signOut();
-      throw error;
+      throw error; // Re-throw to allow calling code to handle
     } finally {
       if (isMounted.current) {
         setLoading(false);

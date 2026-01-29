@@ -5,11 +5,11 @@ import { Menu, Transition, Dialog } from '@headlessui/react';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 
-// Navigation configuration
-const NAVIGATION = {
-  student: '/student',
-  faculty: '/faculty',
-  default: '/'
+// Configuration for different application URLs
+const APP_URLS = {
+  student: 'http://localhost:3001', // Student app URL
+  faculty: 'http://localhost:8081', // Faculty app running on port 8081
+  default: 'http://localhost:3000'  // Main application URL
 }
 
 const Header = () => {
@@ -30,7 +30,7 @@ const Header = () => {
 
   const roles = [
     { id: 'student', name: 'Student Login', path: '/student/login', app: 'main' },
-    { id: 'faculty', name: 'Faculty Login', path: '/faculty/login', app: 'main' },
+    { id: 'faculty', name: 'Faculty Login', path: 'http://localhost:8081/login', isExternal: true },
     { id: 'admin', name: 'Admin Login', path: '/admin/login', app: 'main' }
   ];
   const location = useLocation();
@@ -47,48 +47,32 @@ const Header = () => {
     }
   }, [location])
 
-  // Navigation items with internal routes
+  // Navigation items with full URLs for cross-application navigation
   const navigation = [
     { 
       name: 'Home', 
-      href: '/',
-      app: 'main'
-    },
-    { 
-      name: 'Student Portal', 
-      href: '/student',
+      href: 'http://localhost:3001',
       app: 'student'
     },
     { 
-      name: 'Faculty Portal', 
-      href: '/faculty',
-      app: 'faculty'
+      name: 'Admissions', 
+      href: '/admissions',
+      app: 'main'
     },
     { 
-      name: 'Admin', 
-      href: '/admin',
-      app: 'admin'
+      name: 'About Us', 
+      href: '/about',
+      app: 'main'
     }
   ]
-
-  const switchApp = (app) => {
-    const path = NAVIGATION[app] || NAVIGATION.default;
-    navigate(path);
-  };
 
   // Function to handle navigation between different applications
   const handleNavigation = (e, item) => {
     e.preventDefault();
     
-    // For specific logins, use navigate directly
+    // For admin login, use navigate directly
     if (item.id === 'admin') {
       navigate('/admin/login');
-      return;
-    }
-    
-    // For faculty login, use navigate directly to prevent duplicate /faculty
-    if (item.id === 'faculty') {
-      navigate('/faculty/login');
       return;
     }
     
@@ -105,7 +89,7 @@ const Header = () => {
         window.location.href = item.href;
       } else {
         // Get the base URL for the target application and append the path
-        const baseUrl = NAVIGATION[item.app] || NAVIGATION.default;
+        const baseUrl = APP_URLS[item.app] || APP_URLS.default;
         // Ensure we don't have double slashes when joining URLs
         const path = item.href || item.path;
         const separator = path.startsWith('/') ? '' : '/';
@@ -159,9 +143,9 @@ const Header = () => {
           {/* Desktop Navigation */}
           <div className="hidden lg:flex lg:items-center lg:space-x-8">
             {navigation.map((item) => (
-              <Link
+              <a
                 key={item.name}
-                to={item.href}
+                href={item.href}
                 className={`px-3 py-2 text-sm font-medium transition-all duration-300 relative group ${
                   currentApp === item.app
                     ? 'text-[#032A51] font-semibold'
@@ -173,7 +157,7 @@ const Header = () => {
                 <span className={`absolute bottom-0 left-0 w-full h-0.5 bg-[#032A51] transform transition-transform duration-300 ${
                   currentApp === item.app ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
                 }`}></span>
-              </Link>
+              </a>
             ))}
 
             {/* CTA Buttons */}
@@ -185,8 +169,7 @@ const Header = () => {
                 onClick={(e) => {
                   if (currentApp !== 'main') {
                     e.preventDefault();
-                    switchApp('main');
-                    navigate('/admissions');
+                    window.location.href = `${APP_URLS.default}/admissions`;
                   }
                 }}
               >

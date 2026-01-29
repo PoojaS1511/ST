@@ -31,11 +31,9 @@ import {
   TruckIcon,
   UserCircleIcon,
   UserGroupIcon as UserGroupOutlineIcon,
-  UserPlusIcon,
   UserIcon,
   WifiIcon,
   WrenchScrewdriverIcon,
-  ChatBubbleLeftIcon,
   // Aliases for outline icons
   ChartBarIcon as ChartBarOutlineIcon,
   ClipboardDocumentCheckIcon as ClipboardDocumentCheckOutlineIcon,
@@ -51,8 +49,7 @@ import {
   ClipboardDocumentCheckIcon as ClipboardDocumentCheckSolidIcon,
   CurrencyDollarIcon as CurrencyDollarSolidIcon,
   HomeIcon as HomeSolidIcon,
-  UserGroupIcon as UserGroupSolidIcon,
-  LinkIcon
+  UserGroupIcon as UserGroupSolidIcon
 } from '@heroicons/react/24/solid';
 
 const AdminSidebar = () => {
@@ -171,82 +168,28 @@ const AdminSidebar = () => {
           exact: true
         },
         {
-          name: 'Add Users',
-          path: 'students/add',
-          fullPath: '/admin/students/addusers',
-          icon: UserPlusIcon
-        },
-        {
           name: 'Manage Credentials',
           path: 'students/credentials',
           fullPath: '/admin/students/credentials',
           icon: KeyIcon
-        },
-        {
-          name: 'Signup Credentials',
-          path: 'students/signup-credentials',
-          fullPath: '/admin/students/signup-credentials',
-          icon: ClipboardDocumentCheckIcon
         }
       ]
     },
     { 
       name: 'Faculty Management', 
       path: 'faculty',
-      icon: UserGroupOutlineIcon,
-      color: 'text-indigo-600',
+      icon: UserCircleIcon,
+      color: 'text-white',
       bgColor: 'bg-indigo-100',
-      hasChildren: true,
-      children: [
-        { 
-          name: 'All Faculty',
-          path: 'faculty',
-          fullPath: '/admin/faculty',
-          exact: true
-        },
-        {
-          name: 'Manage Credentials',
-          path: 'faculty/credentials',
-          fullPath: '/admin/faculty/credentials',
-          icon: KeyIcon
-        }, 
-        {
-          name: 'Attendance',
-          path: 'faculty/attendance',
-          fullPath: '/admin/faculty/attendance',
-          icon: ClipboardDocumentCheckIcon
-        },
-        {
-          name: 'Faculty Mapping',
-          path: 'faculty/mapping',
-          fullPath: '/admin/faculty/mapping',
-          icon: LinkIcon
-        },
-        { 
-          name: 'Marks Management', 
-          path: 'faculty/marks',
-          icon: ClipboardDocumentCheckIcon,
-          color: 'text-amber-600',
-          bgColor: 'bg-amber-50',
-          fullPath: '/admin/internal-marks'
-        },
-        { 
-          name: 'Faculty Schedule', 
-          path: 'faculty/schedule',
-          icon: CalendarIcon,
-          color: 'text-blue-600',
-          bgColor: 'bg-blue-50',
-          fullPath: '/admin/faculty-schedule'
-        },
-        { 
-          name: 'Research Papers',
-          path: 'faculty/research-papers',
-          icon: DocumentTextIcon,
-          color: 'text-red-600',
-          bgColor: 'bg-red-50',
-          fullPath: '/admin/faculty/research-papers'
-        }
-      ]
+      external: true,
+      externalUrl: 'http://localhost:8082',
+      onClick: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Open the faculty admin system on port 8082 in a new tab
+        const newWindow = window.open('http://localhost:8082', '_blank', 'noopener,noreferrer');
+        if (newWindow) newWindow.opener = null;
+      }
     },
     { 
       name: 'Academic Management', 
@@ -285,6 +228,14 @@ const AdminSidebar = () => {
           bgColor: 'bg-amber-50',
           fullPath: '/admin/academics/departments'
         },
+        { 
+          name: 'Marks Staging', 
+          path: 'results/staging',
+          icon: DocumentTextIcon,
+          color: 'text-pink-600',
+          bgColor: 'bg-pink-50',
+          fullPath: '/admin/academics/results/staging'
+        }
       ]
     },
     { 
@@ -294,83 +245,51 @@ const AdminSidebar = () => {
       color: 'text-purple-600',
       bgColor: 'bg-purple-100'
     },
-   
+    { 
+      name: 'Hostel', 
+      path: 'hostel',
+      icon: HomeOutlineIcon,
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-100'
+    },
+    { 
+      name: 'Transport', 
+      path: 'transport',
+      icon: TruckIcon,
+      color: 'text-white',
+      bgColor: 'bg-amber-100',
+      external: true,
+      externalUrl: 'http://localhost:8080',
+      onClick: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Open the transport management system on port 8080 in a new tab
+        const newWindow = window.open('http://localhost:8080', '_blank', 'noopener,noreferrer');
+        if (newWindow) newWindow.opener = null;
+      }
+    },
+    { 
+      name: 'Financial Administration', 
+      path: 'financial',
+      icon: CurrencyDollarSolidIcon,
+      color: 'text-white',
+      bgColor: 'bg-green-100',
+      external: true,
+      externalUrl: 'http://localhost:5000',
+      onClick: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Open the financial administration system on port 5000 in a new tab
+        const newWindow = window.open('http://localhost:5000', '_blank', 'noopener,noreferrer');
+        if (newWindow) newWindow.opener = null;
+      }
+    },
     { 
       name: 'Fees', 
       path: 'fees',
       icon: CurrencyDollarOutlineIcon,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-100'
-    },
-    { 
-      name: 'Hostel Management',
-      path: 'hostel',
-      icon: HomeIcon,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-100',
-      hasChildren: true,
-      children: [
-        { 
-          name: 'Announcements Management',
-          path: 'announcements',
-          fullPath: '/admin/hostel/announcements',
-          icon: BellAlertIcon
-        },
-        {
-          name: 'Food Menu Management',
-          path: 'food-menu',
-          fullPath: '/admin/hostel/food-menu',
-          icon: FireIcon
-        },
-        {
-          name: 'Hostel Rules Management',
-          path: 'rules',
-          fullPath: '/admin/hostel/rules',
-          icon: ClipboardDocumentCheckIcon
-        },
-        {
-          name: 'Allocations',
-          path: 'allocations',
-          fullPath: '/admin/hostel/allocations',
-          icon: UserGroupOutlineIcon
-        },
-        {
-          name: 'Feedbacks',
-          path: 'feedbacks',
-          fullPath: '/admin/hostel/feedbacks',
-          icon: ChatBubbleLeftIcon
-        },
-        {
-          name: 'Leave Management',
-          path: 'leave-management',
-          fullPath: '/admin/hostel/leave-management',
-          icon: CalendarDaysIcon
-        },
-        {
-          name: 'Status Management',
-          path: 'status',
-          fullPath: '/admin/hostel/status',
-          icon: ChartBarIcon
-        },
-        {
-          name: 'Menu Items Management',
-          path: 'menu-items',
-          fullPath: '/admin/hostel/menu-items',
-          icon: FireIcon
-        },
-        {
-          name: 'Votes Management',
-          path: 'votes',
-          fullPath: '/admin/hostel/votes',
-          icon: ChartBarIcon
-        },
-        {
-          name: 'Polls Management',
-          path: 'polls',
-          fullPath: '/admin/hostel/polls',
-          icon: ChartBarIcon
-        }
-      ]
     },
     { 
       name: 'Admissions', 
@@ -428,40 +347,6 @@ const AdminSidebar = () => {
       ]
     },
     { 
-      name: 'HR Management', 
-      path: 'hr',
-      icon: BriefcaseIcon,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-100',
-      hasChildren: true,
-      children: [
-        {
-          name: 'Dashboard',
-          path: 'hr',
-          fullPath: '/admin/hr',
-          exact: true
-        },
-        {
-          name: 'Relieving Requests',
-          path: 'hr/relieving-requests',
-          fullPath: '/admin/hr/relieving-requests',
-          icon: ClipboardDocumentCheckIcon
-        },
-        {
-          name: 'Document Manager',
-          path: 'document-manager',
-          fullPath: '/admin/hr/document-manager',
-          icon: DocumentTextIcon
-        },
-        {
-          name: 'Clearance Management',
-          path: 'clearance',
-          fullPath: '/admin/hr/clearance',
-          icon: ClipboardDocumentCheckIcon
-        }
-      ]
-    },
-    { 
       name: 'Notifications', 
       path: 'notifications',
       icon: BellAlertIcon,
@@ -469,18 +354,27 @@ const AdminSidebar = () => {
       bgColor: 'bg-violet-100'
     },
     { 
-      name: 'Notification Recipients', 
-      path: 'notifications/recipients',
-      icon: UserGroupOutlineIcon,
-      color: 'text-teal-600',
-      bgColor: 'bg-teal-100'
-    },
-    { 
       name: 'AI Assistant', 
       path: 'ai-assistant',
       icon: CpuChipIcon,
       color: 'text-fuchsia-600',
       bgColor: 'bg-fuchsia-100'
+    },
+    { 
+      name: 'AI Governance Dashboard', 
+      path: 'ai-governance',
+      icon: ShieldCheckOutlineIcon,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-100',
+      external: true,
+      externalUrl: 'http://localhost:4000',
+      onClick: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Open the AI Governance Dashboard in a new tab
+        const newWindow = window.open('http://localhost:4000', '_blank', 'noopener,noreferrer');
+        if (newWindow) newWindow.opener = null;
+      }
     },
     { 
       name: 'IT & Digital Services', 
@@ -605,7 +499,8 @@ const AdminSidebar = () => {
       {/* Logo */}
       <div className="flex items-center justify-center h-16 px-4 border-b border-gray-300 border-opacity-20">
         <div className="flex flex-col items-center">
-          <p className="text-sm font-semibold text-white">Admin Panel</p>
+          <h1 className="text-xl font-bold text-white">Cube Arts</h1>
+          <p className="text-xs text-gray-300">Admin Panel</p>
         </div>
       </div>
 

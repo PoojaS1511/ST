@@ -55,25 +55,13 @@ export const fetchStudents = async ({
   sortOrder = 'desc'
 } = {}) => {
   try {
-    // Remove undefined, null, or empty string values from filters
-    const cleanFilters = Object.entries(filters).reduce((acc, [key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        acc[key] = value;
-      }
-      return acc;
-    }, {});
-
-    // Build query parameters with cleaned filters
+    // Build query parameters
     const params = new URLSearchParams({
       page: page.toString(),
       limit: pageSize.toString(),
       sort: sortField,
-      order: sortOrder
-    });
-    
-    // Add cleaned filters to params
-    Object.entries(cleanFilters).forEach(([key, value]) => {
-      params.append(key, value);
+      order: sortOrder,
+      ...filters
     });
 
     console.log('Fetching students with params:', params.toString());
@@ -131,49 +119,40 @@ export const fetchStudents = async ({
 // Fetch a single student by ID with related data
 export const fetchStudentById = async (id) => {
   try {
-    if (!id) {
-      console.warn('No student ID provided to fetchStudentById');
-      return null;
-    }
+    if (!id) throw new Error('Student ID is required');
 
-    // First, get the basic student data
+    // First, let's get the basic student data to see what fields are available
     const { data: studentData, error: studentError } = await supabase
       .from('students')
       .select('*')
       .eq('id', id)
-      .maybeSingle(); // Use maybeSingle instead of single to handle no results
+      .single();
 
-    if (studentError) {
-      console.error('Error fetching student:', studentError);
-      throw studentError;
-    }
-
-    // If no student found, return null
-    if (!studentData) {
-      console.warn(`No student found with ID: ${id}`);
-      return null;
-    }
+    if (studentError) throw studentError;
+    if (!studentData) throw new Error('Student not found');
 
     // Try to get course information if course_id exists
     let courseData = null;
     if (studentData.course_id) {
-      const { data: course, error: courseError } = await supabase
-        .from('courses')
-        .select(`
-          *,
-          departments!department_id (
-            id,
-            name,
-            code
-          )
-        `)
-        .eq('id', studentData.course_id)
-        .maybeSingle();
+      try {
+        const { data: course, error: courseError } = await supabase
+          .from('courses')
+          .select(`
+            *,
+            departments!department_id (
+              id,
+              name,
+              code
+            )
+          `)
+          .eq('id', studentData.course_id)
+          .single();
 
-      if (!courseError && course) {
-        courseData = course;
-      } else if (courseError) {
-        console.warn('Could not fetch course data:', courseError);
+        if (!courseError && course) {
+          courseData = course;
+        }
+      } catch (courseErr) {
+        console.warn('Could not fetch course data:', courseErr);
       }
     }
 
@@ -184,9 +163,8 @@ export const fetchStudentById = async (id) => {
     };
 
   } catch (error) {
-    console.error(`Error in fetchStudentById for ID ${id}:`, error);
-    // Don't throw the error, return null instead to allow the UI to handle it gracefully
-    return null;
+    console.error(`Error fetching student with ID ${id}:`, error);
+    throw new Error(error.message || 'Failed to fetch student details');
   }
 };
 

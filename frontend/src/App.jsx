@@ -5,9 +5,6 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ROLES } from './constants/roles';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import UserMenu from './components/common/UserMenu';
-import StudentSettings from './components/student/StudentSettings';
-import StudentAnnouncements from './components/student/StudentAnnouncements';
-import StudentRoutes from './routes/StudentRoutes';
 
 // Layout Components
 const Header = lazy(() => import('./components/layout/Header'));
@@ -17,7 +14,7 @@ const AdminSidebar = lazy(() => import('./components/admin/AdminSidebar'));
 // Lazy load page components
 const HomePage = lazy(() => import('./pages/HomePage'));
 const AboutUsPage = lazy(() => import('./pages/AboutUsPage'));
-const AdmissionsPage = lazy(() => import('./pages/NewAdmissionsPage'));
+const AdmissionsPage = lazy(() => import('./pages/AdmissionsPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const StudentLoginComponent = lazy(async () => {
   const module = await import('./components/student/StudentLogin');
@@ -39,6 +36,7 @@ const StudentInternships = lazy(() => import('./components/student/StudentIntern
 const CareerPrepCourses = lazy(() => import('./components/student/CareerPrepCourses'));
 const StudentCareerAssistant = lazy(() => import('./components/student/StudentCareerAssistant'));
 const StudentNotifications = lazy(() => import('./components/student/StudentNotifications'));
+const StudentSettings = lazy(() => import('./components/student/StudentSettings'));
 const FacultyDashboard = lazy(() => import('./pages/faculty/FacultyDashboard'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminOverview = lazy(() => import('./components/admin/AdminOverview'));
@@ -173,9 +171,6 @@ const AppContent = () => {
           } 
         />
         
-        {/* Login redirects for consistency */}
-        <Route path="login/faculty" element={<Navigate to="/faculty/login" replace />} />
-        
         {/* Protected Admin Routes */}
         <Route 
           path="admin/*" 
@@ -186,15 +181,18 @@ const AppContent = () => {
           }
         />
         
-        {/* Faculty Routes - No protection at this level, protection is handled inside FacultyRoutes */}
+        {/* Faculty Routes */}
         <Route 
-          path="faculty/*" 
+          path="faculty" 
           element={
-            <Suspense fallback={<div>Loading faculty portal...</div>}>
-              <FacultyRoutes />
-            </Suspense>
-          }
-        />
+            <ProtectedRoute allowedRoles={[ROLES.FACULTY]}>
+              <FacultyDashboard />
+            </ProtectedRoute>
+          } 
+        >
+          <Route index element={<FacultyRoutes />} />
+          <Route path="*" element={<Navigate to="/faculty" replace />} />
+        </Route>
         
         {/* Student Routes */}
         <Route
@@ -203,16 +201,155 @@ const AppContent = () => {
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]} redirectPath="/student/login">
               <StudentProvider>
                 <Suspense fallback={<div>Loading student dashboard...</div>}>
-                  <StudentDashboard />
+                  <StudentDashboard>
+                    <Outlet />
+                  </StudentDashboard>
                 </Suspense>
               </StudentProvider>
             </ProtectedRoute>
           }
         >
           <Route index element={<Navigate to="/student/dashboard" replace />} />
-          <Route path="*" element={
-            <StudentRoutes />
+          
+          {/* Dashboard */}
+          <Route path="dashboard" element={
+            <Suspense fallback={<div>Loading dashboard...</div>}>
+              <StudentOverview />
+            </Suspense>
           } />
+          
+          {/* Profile */}
+          <Route path="profile" element={
+            <Suspense fallback={<div>Loading profile...</div>}>
+              <StudentProfile />
+            </Suspense>
+          } />
+          
+          {/* Academic Routes */}
+          <Route path="academic" element={
+            <Suspense fallback={<div>Loading academic information...</div>}>
+              <StudentAcademic />
+            </Suspense>
+          } />
+          
+          <Route path="attendance" element={
+            <Suspense fallback={<div>Loading attendance...</div>}>
+              <StudentAttendance />
+            </Suspense>
+          } />
+          
+          <Route path="examinations" element={
+            <Suspense fallback={<div>Loading examinations...</div>}>
+              <StudentExaminations />
+            </Suspense>
+          } />
+          
+          {/* Fees & Admission */}
+          <Route path="fees" element={
+            <Suspense fallback={<div>Loading fees information...</div>}>
+              <StudentFees />
+            </Suspense>
+          } />
+          
+          {/* Hostel */}
+          <Route path="hostel" element={
+            <Suspense fallback={<div>Loading hostel information...</div>}>
+              <StudentHostel />
+            </Suspense>
+          } />
+          
+          {/* Transport */}
+          <Route path="transport" element={
+            <Suspense fallback={<div>Loading transport information...</div>}>
+              <StudentTransport />
+            </Suspense>
+          } />
+          
+          {/* Career Development */}
+          <Route path="career">
+            <Route index element={
+              <Suspense fallback={<div>Loading career development...</div>}>
+                <StudentCareerInsights />
+              </Suspense>
+            } />
+            <Route path="insights" element={
+              <Suspense fallback={<div>Loading career insights...</div>}>
+                <StudentCareerInsights />
+              </Suspense>
+            } />
+            <Route path="resume" element={
+              <Suspense fallback={<div>Loading resume analyzer...</div>}>
+                <ResumeUpload />
+              </Suspense>
+            } />
+            <Route path="internships" element={
+              <Suspense fallback={<div>Loading internships...</div>}>
+                <StudentInternships />
+              </Suspense>
+            } />
+            <Route path="courses" element={
+              <Suspense fallback={<div>Loading career prep courses...</div>}>
+                <CareerPrepCourses />
+              </Suspense>
+            } />
+            <Route path="assistant" element={
+              <Suspense fallback={<div>Loading career assistant...</div>}>
+                <StudentCareerAssistant />
+              </Suspense>
+            } />
+            <Route 
+              path="resume" 
+              element={
+                <Suspense fallback={<div>Loading resume analyzer...</div>}>
+                  <ResumeUpload studentId={user?.id} />
+                </Suspense>
+              } 
+            />
+            <Route path="internships" element={
+              <Suspense fallback={<div>Loading internships...</div>}>
+                <StudentInternships />
+              </Suspense>
+            } />
+            <Route path="courses" element={
+              <Suspense fallback={<div>Loading career courses...</div>}>
+                <CareerPrepCourses />
+              </Suspense>
+            } />
+            <Route path="assistant" element={
+              <Suspense fallback={<div>Loading career assistant...</div>}>
+                <StudentCareerAssistant />
+              </Suspense>
+            } />
+            <Route 
+              path="*" 
+              element={
+                <Navigate to="/student/career" replace />
+              } 
+            />
+          </Route>
+          
+          {/* Notifications */}
+          <Route path="notifications" element={
+            <Suspense fallback={<div>Loading notifications...</div>}>
+              <StudentNotifications />
+            </Suspense>
+          } />
+          
+          {/* Settings */}
+          <Route path="settings" element={
+            <Suspense fallback={<div>Loading settings...</div>}>
+              <StudentSettings />
+            </Suspense>
+          } />
+          
+          {/* Profile Setup */}
+          <Route path="profile-setup" element={
+            <Suspense fallback={<div>Loading profile setup...</div>}>
+              <StudentProfile setupMode={true} />
+            </Suspense>
+          } />
+          
+          <Route path="*" element={<Navigate to="/student/dashboard" replace />} />
         </Route>
         
         {/* Driver Routes */}
