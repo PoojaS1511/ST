@@ -6,13 +6,15 @@ export const ROLES = {
   DRIVER: 'driver',
   STAFF: 'staff',
   ACCOUNTS: 'accounts',
-  LIBRARIAN: 'librarian'
+  LIBRARIAN: 'librarian',
+  HR: 'hr'
 };
 
 // Role hierarchy for permission checking
 export const ROLE_HIERARCHY = {
   [ROLES.ADMIN]: [
     ROLES.ADMIN,
+    ROLES.HR,
     ROLES.FACULTY,
     ROLES.STAFF,
     ROLES.ACCOUNTS,
@@ -20,6 +22,13 @@ export const ROLE_HIERARCHY = {
     ROLES.STUDENT,
     ROLES.PARENT,
     ROLES.DRIVER
+  ],
+  [ROLES.HR]: [
+    ROLES.HR,
+    ROLES.FACULTY,
+    ROLES.STAFF,
+    ROLES.STUDENT,
+    ROLES.PARENT
   ],
   [ROLES.FACULTY]: [
     ROLES.FACULTY,
@@ -62,6 +71,21 @@ export const ROLE_PERMISSIONS = {
     canManageSettings: true,
     canViewReports: true,
     canExportData: true,
+    canManageQuality: true,
+    canViewQuality: true,
+    canManageHR: true,
+    canManageOnboarding: true,
+  },
+  [ROLES.HR]: {
+    canViewDashboard: true,
+    canManageUsers: true,
+    canManageFaculty: true,
+    canManageStaff: true,
+    canManageAttendance: true,
+    canViewReports: true,
+    canManageHR: true,
+    canManageOnboarding: true,
+    canViewQuality: true,
   },
   [ROLES.FACULTY]: {
     canViewDashboard: true,
@@ -70,12 +94,15 @@ export const ROLE_PERMISSIONS = {
     canManageResults: true,
     canViewStudents: true,
     canViewReports: true,
+    canViewQuality: true,
   },
   [ROLES.STAFF]: {
     canViewDashboard: true,
     canManageStudents: true,
     canViewAttendance: true,
     canViewResults: true,
+    canManageQuality: true,
+    canViewQuality: true,
   },
   [ROLES.ACCOUNTS]: {
     canViewDashboard: true,

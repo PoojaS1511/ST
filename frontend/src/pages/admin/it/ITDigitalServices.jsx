@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 import { 
   WifiIcon,
   ComputerDesktopIcon,

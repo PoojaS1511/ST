@@ -3,7 +3,9 @@
  * Makes HTTP requests to the Flask backend server instead of using Supabase directly
  */
 
-const API_BASE_URL = 'http://localhost:5001/api';
+import { API_URL } from '../config';
+
+const API_BASE_URL = process.env.VITE_API_BASE_URL || API_URL; // Uses frontend config, which includes /api
 
 class HttpApiService {
   constructor() {

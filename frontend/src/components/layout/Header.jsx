@@ -5,19 +5,42 @@ import { Menu, Transition, Dialog } from '@headlessui/react';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 
-// Configuration for different application URLs
+// Configuration for different application URLs (use Vite env vars when available)
 const APP_URLS = {
-  student: 'http://localhost:3001', // Student app URL
-  faculty: 'http://localhost:8081', // Faculty app running on port 8081
-  default: 'http://localhost:3000'  // Main application URL
+  student: import.meta.env.VITE_STUDENT_APP_URL || 'http://localhost:3001',
+  faculty: import.meta.env.VITE_FACULTY_APP_URL || 'http://localhost:8081',
+  default: import.meta.env.VITE_MAIN_APP_URL || 'http://localhost:3000'
 }
 
 const Header = () => {
+  console.log('🟢 Header component is mounting...');
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentApp, setCurrentApp] = useState('main');
   const [scrolled, setScrolled] = useState(false);
   const { user, logout } = useAuth();
+  
+  // Navigation items with full URLs for cross-application navigation
+  const navigation = [
+    { 
+      name: 'Home', 
+      href: APP_URLS.student,
+      app: 'student'
+    },
+    { 
+      name: 'Admissions', 
+      href: '/admissions',
+      app: 'main'
+    },
+    { 
+      name: 'About Us', 
+      href: '/about',
+      app: 'main'
+    }
+  ]
+
+  console.log('🟢 Header - navigation items:', navigation);
+  console.log('🟢 Header - user:', user);
 
   // Handle scroll effect
   useEffect(() => {
@@ -30,7 +53,7 @@ const Header = () => {
 
   const roles = [
     { id: 'student', name: 'Student Login', path: '/student/login', app: 'main' },
-    { id: 'faculty', name: 'Faculty Login', path: 'http://localhost:8081/login', isExternal: true },
+    { id: 'faculty', name: 'Faculty Login', path: `${APP_URLS.faculty}/login`, isExternal: true },
     { id: 'admin', name: 'Admin Login', path: '/admin/login', app: 'main' }
   ];
   const location = useLocation();
@@ -46,25 +69,6 @@ const Header = () => {
       setCurrentApp('main')
     }
   }, [location])
-
-  // Navigation items with full URLs for cross-application navigation
-  const navigation = [
-    { 
-      name: 'Home', 
-      href: 'http://localhost:3001',
-      app: 'student'
-    },
-    { 
-      name: 'Admissions', 
-      href: '/admissions',
-      app: 'main'
-    },
-    { 
-      name: 'About Us', 
-      href: '/about',
-      app: 'main'
-    }
-  ]
 
   // Function to handle navigation between different applications
   const handleNavigation = (e, item) => {
@@ -119,9 +123,10 @@ const Header = () => {
   };
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white shadow-md ${
-      scrolled ? 'border-b border-gray-200' : ''
-    }`}>
+    <>
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white shadow-md ${
+        scrolled ? 'border-b border-gray-200' : ''
+      }`}>
       <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8" aria-label="Top">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
@@ -141,7 +146,7 @@ const Header = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex lg:items-center lg:space-x-8">
+          <div className="flex lg:items-center lg:space-x-8">
             {navigation.map((item) => (
               <a
                 key={item.name}
@@ -318,7 +323,8 @@ const Header = () => {
         </Transition>
       </nav>
     </header>
+    </>
   );
-}
+};
 
 export default Header;

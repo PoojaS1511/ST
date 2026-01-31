@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { supabase } = require('../app');
+const { supabase } = require('../supabase_client');
 
 // ✅ Get all courses (no pagination)
 router.get('/', async (req, res) => {

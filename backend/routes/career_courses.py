@@ -120,7 +120,7 @@ def get_filters():
         platforms = ['Udemy', 'YouTube', 'Coursera', 'edX', 'Pluralsight']
         difficulties = ['Beginner', 'Intermediate', 'Advanced', 'All Levels']
         categories = [
-            'Development', 'Business', 'Finance & Accounting', 'IT & Software',
+            'Development', 'Business', 'IT & Software',
             'Office Productivity', 'Personal Development', 'Design', 'Marketing',
             'Lifestyle', 'Photography & Video', 'Health & Fitness', 'Music',
             'Teaching & Academics', 'Data Science', 'Programming', 'Web Development',

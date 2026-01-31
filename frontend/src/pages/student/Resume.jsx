@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 import axios from 'axios';
 import { 
   DocumentTextIcon, 
@@ -11,6 +11,7 @@ import {
   InformationCircleIcon
 } from '@heroicons/react/24/outline';
 import apiService from '../../services/api';
+import { API_URL } from '../../config';
 
 const Resume = () => {
   const [file, setFile] = useState(null);
@@ -89,7 +90,7 @@ const Resume = () => {
 
       const response = await axios({
         method: 'post',
-        url: 'http://localhost:5001/api/resume/upload',
+        url: `${API_URL}/resume/upload`,
         data: formData,
         withCredentials: true,
         onUploadProgress: (progressEvent) => {

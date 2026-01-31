@@ -665,7 +665,6 @@ def get_student_timetable(student_id):
         return jsonify({'error': str(e)}), 500
 
 @students_bp.route('/stats', methods=['GET'])
-@cross_origin()
 def get_student_stats():
     """Get student statistics"""
     print("\n=== GET /api/students/stats called ===")
@@ -791,7 +790,6 @@ def is_valid_date(date_str):
         return False
 
 @students_bp.route('/', methods=['POST'])
-@cross_origin()
 def add_student():
     """Add a new student with Supabase authentication"""
     try:
@@ -1293,7 +1291,6 @@ def add_student():
         }), 500
 
 @students_bp.route('/test-auth', methods=['GET'])
-@cross_origin()
 def test_auth():
     try:
         email = f"test-{secrets.token_hex(8)}@example.com"

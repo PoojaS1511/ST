@@ -3,13 +3,26 @@
 Script to insert mock data into Supabase database
 """
 
+import httpx
 from supabase import create_client, Client
 from datetime import datetime, date
 import uuid
 
+# Store original __init__ method
+_original_init = httpx.Client.__init__
+
+# Patch httpx.Client.__init__ to ignore proxy argument
+def patched_init(self, *args, **kwargs):
+    # Remove proxy from kwargs if present
+    kwargs.pop('proxy', None)
+    return _original_init(self, *args, **kwargs)
+
+# Apply the patch
+httpx.Client.__init__ = patched_init
+
 # Supabase configuration
-SUPABASE_URL = "https://cdozcvfnamrqbaqsrhnp.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkb3pjdmZuYW1ycWJhcXNyaG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMxNDIwNDEsImV4cCI6MjA1ODcxODA0MX0.CprHN0BfyN5PlQp9yfQoiZkyjnO18Rm7MAD3ObzafJ8"
+SUPABASE_URL = "https://qkaaoeismqnhjyikgkme.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrYWFvZWlzbXFuaGp5aWtna21lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzMDI1NzQsImV4cCI6MjA2OTg3ODU3NH0.o3K8BNVZucbqFWsPzIZJ_H8_ApR3uu9Cvjm5C9HFKX0"
 
 def main():
     try:

@@ -1,8 +1,6 @@
 import os
 import sys
 import json
-from dotenv import load_dotenv
-from supabase import create_client, Client
 
 # Get the project root directory (two levels up from this script)
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -10,40 +8,20 @@ project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 # Add the project root to the Python path
 sys.path.append(project_root)
 
-# Load environment variables from the project root
-env_path = os.path.join(project_root, '.env')
-load_dotenv(env_path)
-
-# Debug: Print the environment variables being used
-print("\n🔍 Environment Variables:")
-print(f"Project Root: {project_root}")
-print(f"Using .env file: {env_path}")
-print(f"SUPABASE_URL: {'set' if os.getenv('SUPABASE_URL') else 'not set'}")
-print(f"SUPABASE_SERVICE_KEY: {'set' if os.getenv('SUPABASE_SERVICE_KEY') else 'not set'}")
-
+# Import the supabase client from the project's supabase_client module
+from supabase_client import get_supabase
 
 def create_admin_user():
     """
     Create an admin user using Supabase Admin API
     """
     try:
-        # Get Supabase credentials from environment variables
-        supabase_url = os.getenv('SUPABASE_URL')
-        service_role_key = os.getenv('SUPABASE_SERVICE_KEY')
-        
-        if not supabase_url or not service_role_key:
-            print("❌ Error: Missing Supabase credentials in .env file")
-            print("Please ensure you have the following in your .env file:")
-            print("SUPABASE_URL=your_supabase_url")
-            print("SUPABASE_SERVICE_KEY=your_service_role_key")
-            return
-            
-        # Initialize Supabase client with service role key (admin)
-        supabase: Client = create_client(supabase_url, service_role_key)
+        # Get the admin Supabase client
+        supabase = get_supabase(admin=True)
         
         # Admin user details
-        admin_email = "admin@college.edu"
-        admin_password = "Admin@123"  # Strong password that will be changed after first login
+        admin_email = "Admin@college.edu"
+        admin_password = "admin@123"  # Strong password that will be changed after first login
         
         print(f"🔄 Creating admin user: {admin_email}")
         

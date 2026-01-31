@@ -13,7 +13,8 @@ from functools import wraps
 
 # Third-party imports
 from flask import Flask, request, jsonify, send_from_directory, make_response
-from flask_cors import CORS, cross_origin
+from flask_cors import CORS
+
 from flask_sqlalchemy import SQLAlchemy
 # Make rate limiting optional
 try:
@@ -34,7 +35,7 @@ except ImportError:
 from supabase import create_client, Client
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
-from supabase_client import get_supabase
+from supabase_client import get_supabase, supabase_admin
 import requests
 import logging
 import bcrypt
@@ -56,6 +57,14 @@ app = Flask(__name__)
 
 # Load environment variables
 load_dotenv()
+
+# CORS configuration
+# Allow overriding via ALLOWED_ORIGINS env var (comma-separated list)
+_allowed = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:3001,http://localhost:3002,http://127.0.0.1:3000,http://127.0.0.1:3001,http://127.0.0.1:3002,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5001,http://127.0.0.1:5001')
+ALLOWED_ORIGINS = [origin.strip() for origin in _allowed.split(',') if origin.strip()]
+
+# Initialize CORS with automatic OPTIONS handling enabled
+CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=True, methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], allow_headers=["Content-Type", "Authorization", "X-Requested-With"])
 
 # Configure database
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///career_courses.db')
@@ -100,7 +109,6 @@ else:
 with app.app_context():
     try:
         # Import all models to ensure they are registered with SQLAlchemy
-        from models import db_models  # This will import all models
         from models.career_course import CareerCourse  # Import specific models
         
         # Create tables
@@ -110,7 +118,7 @@ with app.app_context():
         print(f"Error creating database tables: {e}")
         raise  # Re-raise the exception to see the full traceback
 
-# CORS will be configured later after ALLOWED_ORIGINS is defined
+
 
 # Import blueprints - keep these at the top to detect circular imports early
 # We'll import them properly after the app is created
@@ -161,29 +169,29 @@ def verify_password(stored_password_hash: str, provided_password: str) -> bool:
 
 # Generate a random secure password with letters, digits, and special characters.
 def generate_secure_password(length=12):
-    """Generate a secure random password with letters, digits, and special characters."""
+    """Generate a cryptographically secure random password with letters, digits, and special characters."""
     # Define character sets
     lowercase = string.ascii_lowercase
     uppercase = string.ascii_uppercase
     digits = string.digits
-    special = '!@#$%^&*()_+-=[]{}|;:,.<>?'
-    
+    special = '!@#$%^&*()_+-=[]{}|;:,.<>'
+
     # Ensure we have at least one character from each set
     password = [
-        random.choice(lowercase),
-        random.choice(uppercase),
-        random.choice(digits),
-        random.choice(special)
+        secrets.choice(lowercase),
+        secrets.choice(uppercase),
+        secrets.choice(digits),
+        secrets.choice(special)
     ]
-    
+
     # Fill the rest of the password with random characters
     remaining = length - len(password)
     all_chars = lowercase + uppercase + digits + special
-    password.extend(random.choice(all_chars) for _ in range(remaining))
-    
+    password.extend(secrets.choice(all_chars) for _ in range(remaining))
+
     # Shuffle the password to make it more random
     random.shuffle(password)
-    
+
     return ''.join(password)
 
 def send_welcome_email(to_email: str, student_name: str, email: str, password: str) -> bool:
@@ -226,73 +234,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 app.config['ALLOWED_EXTENSIONS'] = ALLOWED_EXTENSIONS
 
-# Configure CORS with more permissive settings for development
-# Allow all origins in development - restrict this in production
-ALLOWED_ORIGINS = [
-    'http://localhost:3000', 
-    'http://localhost:3001', 
-    'http://127.0.0.1:3000', 
-    'http://127.0.0.1:3001',
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:5001',
-    'http://127.0.0.1:5001',
-    'https://qkaaoeismqnhjyikgkme.supabase.co',
-    'https://*.supabase.co',
-    'https://*.supabase.in',
-    'https://*.supabase.com'
-]
-
-# Configure CORS with the allowed origins
-cors = CORS(
-    app,
-    resources={
-        r"/*": {
-            "origins": ALLOWED_ORIGINS,
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-            "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
-            "supports_credentials": True,
-            "expose_headers": ["Content-Type", "Authorization", "X-Total-Count"],
-            "max_age": 600  # 10 minutes
-        }
-    },
-    supports_credentials=True
-)
-
-# Add CORS headers to all responses
-@app.after_request
-def add_cors_headers(response):
-    # Only add CORS headers if the request has an Origin header
-    origin = request.headers.get('Origin')
-    if origin and any(origin.startswith(allowed) for allowed in ALLOWED_ORIGINS):
-        response.headers['Access-Control-Allow-Origin'] = origin
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept, Origin'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
-        response.headers['Access-Control-Expose-Headers'] = 'Content-Type, Authorization, X-Total-Count'
-    
-    # Add security headers
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-    
-    # Handle preflight requests
-    if request.method == 'OPTIONS':
-        response.status_code = 200
-    
-    return response
-
-# Supabase Configuration
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
-SUPABASE_SERVICE_ROLE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-
-if not all([SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY]):
-    raise ValueError("Missing Supabase configuration. Please check your .env file.")
-
-# Initialize Supabase clients
-supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-supabase_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+# Supabase clients are initialized in supabase_client.py
 
 # Admin route decorator
 def admin_required(fn):
@@ -304,7 +246,7 @@ def admin_required(fn):
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
             return jsonify({"message": "Missing or invalid authorization header"}), 401
-            
+
         # Set the admin client for this request
         request.supabase = supabase_admin
         return fn(*args, **kwargs)
@@ -314,57 +256,97 @@ def admin_required(fn):
 def supabase_auth_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
+        # Handle OPTIONS requests (preflight) with proper CORS response
+        if request.method == 'OPTIONS':
+            response = make_response('', 200)
+            origin = request.headers.get('Origin', 'http://localhost:3001')
+            if origin in ALLOWED_ORIGINS:
+                response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+            response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+            return response
+
         # For non-admin routes, use the regular client
         request.supabase = supabase
-        
-        # Skip auth for OPTIONS requests (preflight)
-        if request.method == 'OPTIONS':
-            return fn(*args, **kwargs)
-            
+
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({"message": "Missing or invalid authorization header"}), 401
-            
+            response = jsonify({"message": "Missing or invalid authorization header"}), 401
+            return add_cors_headers(response)
+
         token = auth_header.split(' ')[1]
         try:
             # Verify the token with Supabase
             user = supabase.auth.get_user(token)
             if not user:
-                return jsonify({"message": "Invalid or expired token"}), 401
-                
+                response = jsonify({"message": "Invalid or expired token"}), 401
+                return add_cors_headers(response)
+
             # Add user info to the request context
             request.user = user
-            return fn(*args, **kwargs)
-            
+            result = fn(*args, **kwargs)
+
+            # Ensure CORS headers are added to the response
+            return add_cors_headers(result)
+
         except Exception as e:
-            return jsonify({
+            response = jsonify({
                 "message": "Authentication failed",
                 "error": str(e)
             }), 401
+            return add_cors_headers(response)
     return wrapper
 
-# Configure CORS with more permissive settings for development
-# Add CORS headers to all responses
-@app.after_request
 def add_cors_headers(response):
-    # Get the origin from the request
-    origin = request.headers.get('Origin', '')
-    
-    # Only set CORS headers if the origin is in the allowed list
-    if origin in ALLOWED_ORIGINS:
-        response.headers['Access-Control-Allow-Origin'] = origin
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept, Origin, X-Request-ID'
-        response.headers['Access-Control-Expose-Headers'] = 'Content-Type, Authorization, X-Total-Count'
-    
-    # Add security headers
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-    
-    return response
+    """Add CORS headers to a Flask response"""
+    if isinstance(response, tuple):
+        # Handle tuple responses (response, status_code)
+        resp, status_code = response
+        if hasattr(resp, 'headers'):
+            origin = request.headers.get('Origin', 'http://localhost:3001')
+            if origin in ALLOWED_ORIGINS:
+                resp.headers.add('Access-Control-Allow-Origin', origin)
+            resp.headers.add('Access-Control-Allow-Credentials', 'true')
+            resp.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+            resp.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        return resp, status_code
+    else:
+        # Handle direct response objects
+        if hasattr(response, 'headers'):
+            origin = request.headers.get('Origin', 'http://localhost:3001')
+            if origin in ALLOWED_ORIGINS:
+                response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+            response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        return response
 
+@app.before_request
+def handle_preflight():
+    """Return CORS-enabled OK for OPTIONS preflight requests for any path."""
+    if request.method == 'OPTIONS':
+        resp = make_response('', 200)
+        origin = request.headers.get('Origin', 'http://localhost:3001')
+        if origin in ALLOWED_ORIGINS:
+            resp.headers.add('Access-Control-Allow-Origin', origin)
+        resp.headers.add('Access-Control-Allow-Credentials', 'true')
+        resp.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        resp.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        return resp
+
+@app.route('/api/errors', methods=['POST', 'OPTIONS'])
+def report_error():
+    """Endpoint for client-side error reporting (simple logger)."""
+    try:
+        if request.method == 'OPTIONS':
+            return add_cors_headers(('', 200))
+        payload = request.get_json(silent=True) or {}
+        logger.info(f"Client error reported: {payload}")
+        return add_cors_headers((jsonify({"status":"ok"}), 200))
+    except Exception as e:
+        logger.error(f"Error in /api/errors: {e}")
+        return add_cors_headers((jsonify({"status":"error", "message":str(e)}), 500))
 
 # Configure Gemini AI
 # Prefer environment variable for API key, fall back to existing value if present
@@ -445,8 +427,10 @@ def health():
     if request.method == 'OPTIONS':
         # Handle preflight request
         response = make_response()
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
+        origin = request.headers.get('Origin', 'http://localhost:3001')
+        if origin in ALLOWED_ORIGINS:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
         response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
         return response
     
@@ -713,7 +697,8 @@ def handle_courses_DISABLED():
             if missing_fields:
                 response = jsonify({
                     'success': False,
-                    'error': f'Missing required fields: {', '.join(missing_fields)}'
+                    'error': f"Missing required fields: {', '.join(missing_fields)}"
+
                 })
                 return response, 400
             
@@ -721,7 +706,7 @@ def handle_courses_DISABLED():
             if any(c['code'] == data['code'] for c in app.courses):
                 response = jsonify({
                     'success': False,
-                    'error': f'Course with code {data['code']} already exists'
+                    'error': f"Course with code {data['code']} already exists"
                 })
                 return response, 400
             
@@ -1029,46 +1014,67 @@ def list_students():
         }), 500
 
 # Student statistics endpoint
-@app.route('/api/students/stats', methods=['GET'])
+# In case of upstream DB timeouts or errors, return cached or partial data instead of a hard 500 where possible
+_last_student_stats_cache = {
+    'stats': None,
+    'timestamp': None
+}
+
+@app.route('/api/students/stats', methods=['GET', 'OPTIONS'])
 @supabase_auth_required
 def get_student_stats():
     try:
         # Log the request
         app.logger.info('Received request for student stats')
         app.logger.debug(f'Request headers: {request.headers}')
-        
+
         # Get the current user's identity
         current_user = request.user
         app.logger.info(f'Authenticated user: {current_user}')
-        
+
         # Get Supabase client
         supabase = get_supabase()
         if not supabase:
             app.logger.error('Failed to initialize Supabase client')
+            # If we have cached stats, return them instead of failing
+            if _last_student_stats_cache['stats']:
+                app.logger.warning('Returning cached stats due to DB init failure')
+                cached = _last_student_stats_cache['stats']
+                cached['partial'] = True
+                return jsonify(cached)
             return jsonify({'error': 'Database connection error'}), 500
-        
+
         try:
-            # Get total number of students
+            # Get total number of students (efficient count)
             response = supabase.table('students').select('id', count='exact').execute()
             total_students = response.count if hasattr(response, 'count') else (len(response.data) if response.data else 0)
             app.logger.debug(f'Total students: {total_students}')
-            
-            # Get gender distribution
-            gender_response = supabase.table('students').select('gender').execute()
+
+            # Efficient gender aggregation: fetch genders in a paginated manner to avoid long-running reads
             gender_counts = {'male': 0, 'female': 0, 'other': 0}
-            
-            if hasattr(gender_response, 'data') and gender_response.data:
-                for student in gender_response.data:
-                    gender = str(student.get('gender', '')).lower()
-                    if 'male' in gender:
-                        gender_counts['male'] += 1
-                    elif 'female' in gender:
-                        gender_counts['female'] += 1
-                    else:
-                        gender_counts['other'] += 1
-            
-            app.logger.debug(f'Gender distribution: {gender_counts}')
-            
+            try:
+                # Fetch in pages of 1000 to limit read time
+                limit = 1000
+                offset = 0
+                while True:
+                    gender_resp = supabase.table('students').select('gender').limit(limit).offset(offset).execute()
+                    data = gender_resp.data if hasattr(gender_resp, 'data') else None
+                    if not data:
+                        break
+                    for student in data:
+                        gender = str(student.get('gender', '')).lower()
+                        if 'male' in gender:
+                            gender_counts['male'] += 1
+                        elif 'female' in gender:
+                            gender_counts['female'] += 1
+                        else:
+                            gender_counts['other'] += 1
+                    if len(data) < limit:
+                        break
+                    offset += limit
+            except Exception as gender_err:
+                app.logger.warning(f'Gender aggregation failed: {str(gender_err)}')
+
             # Get department count
             dept_count = 0
             try:
@@ -1076,7 +1082,7 @@ def get_student_stats():
                 dept_count = dept_response.count if hasattr(dept_response, 'count') else (len(dept_response.data) if dept_response.data else 0)
             except Exception as dept_error:
                 app.logger.warning(f'Could not fetch department count: {str(dept_error)}')
-            
+
             # Get faculty count
             faculty_count = 0
             try:
@@ -1084,23 +1090,22 @@ def get_student_stats():
                 faculty_count = faculty_response.count if hasattr(faculty_response, 'count') else (len(faculty_response.data) if faculty_response.data else 0)
             except Exception as faculty_error:
                 app.logger.warning(f'Could not fetch faculty count: {str(faculty_error)}')
-            
+
             app.logger.debug(f'Department count: {dept_count}, Faculty count: {faculty_count}')
-            
+
             # Prepare response in the format expected by the frontend
             stats = {
                 'success': True,
                 'total_students': total_students,
-                'recent_students': 0,  # You may want to implement this later
+                'recent_students': 0,
                 'by_status': {
-                    'active': 0,  # You may want to implement status tracking
+                    'active': 0,
                     'inactive': 0,
                     'graduated': 0,
                     'suspended': 0
                 },
-                'by_course': [],  # You may want to implement course distribution
-                'by_year': [],    # You may want to implement year distribution
-                # Include the original data for backward compatibility
+                'by_course': [],
+                'by_year': [],
                 'total': total_students,
                 'male': gender_counts['male'],
                 'female': gender_counts['female'],
@@ -1108,30 +1113,37 @@ def get_student_stats():
                 'departments': dept_count,
                 'faculty': faculty_count
             }
-            
+
+            # Update cache
+            try:
+                _last_student_stats_cache['stats'] = stats.copy()
+                _last_student_stats_cache['timestamp'] = datetime.utcnow()
+            except Exception:
+                app.logger.warning('Failed to update student stats cache')
+
             app.logger.info('Successfully fetched student stats')
             return jsonify(stats)
-            
+
         except Exception as db_error:
             app.logger.error(f'Database error in get_student_stats: {str(db_error)}')
             app.logger.error(traceback.format_exc())
+            # If we have cached stats, return them as partial result
+            if _last_student_stats_cache['stats']:
+                app.logger.warning('Returning cached stats due to DB error')
+                cached = _last_student_stats_cache['stats']
+                cached['partial'] = True
+                cached['error_details'] = str(db_error)
+                return jsonify(cached)
+            # Otherwise return a clear error
             return jsonify({
                 'success': False,
                 'error': 'Database error',
                 'details': str(db_error)
             }), 500
-            
+
     except Exception as e:
         app.logger.error(f'Error in get_student_stats: {str(e)}')
         app.logger.error(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error': 'Failed to fetch student statistics',
-            'details': str(e)
-        }), 500
-        
-    except Exception as e:
-        print(f"Error in get_student_stats: {str(e)}")
         return jsonify({
             'success': False,
             'error': 'Failed to fetch student statistics',
@@ -1646,11 +1658,11 @@ def add_student():
             except Exception as cred_error:
                 app.logger.error(f"Error storing student credentials: {str(cred_error)}")
                 app.logger.error(traceback.format_exc())
-                
-            if not student_result.data:
+
+            if not result.data:
                 raise Exception("Failed to fetch created student record")
-                
-            student = student_result.data
+
+            student = result.data
                 
             # Add timestamps if not already present
             if 'created_at' not in student:
@@ -2468,7 +2480,6 @@ def update_student_settings(student_id):
 
 # Clubs endpoints
 @app.route('/api/clubs', methods=['GET', 'POST'])
-@cross_origin(origins=ALLOWED_ORIGINS, supports_credentials=True)
 def handle_clubs():
     if request.method == 'GET':
         try:
@@ -2517,7 +2528,6 @@ def handle_clubs():
             }), 500
 
 @app.route('/api/clubs/<club_id>', methods=['GET', 'PUT', 'DELETE'])
-@cross_origin(origins=ALLOWED_ORIGINS, supports_credentials=True)
 def handle_club(club_id):
     if request.method == 'GET':
         try:
@@ -2528,7 +2538,7 @@ def handle_club(club_id):
             return jsonify({'success': True, 'data': response.data[0]})
         except Exception as e:
             return jsonify({'success': False, 'message': str(e)}), 500
-    
+
     elif request.method == 'PUT':
         try:
             data = request.get_json()
@@ -2539,7 +2549,7 @@ def handle_club(club_id):
             return jsonify({'success': True, 'data': response.data[0]})
         except Exception as e:
             return jsonify({'success': False, 'message': str(e)}), 500
-    
+
     elif request.method == 'DELETE':
         try:
             # Delete club from Supabase
@@ -2551,7 +2561,6 @@ def handle_club(club_id):
             return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/clubs/<club_id>/members', methods=['GET'])
-@cross_origin(origins=ALLOWED_ORIGINS, supports_credentials=True)
 def get_club_members(club_id):
     try:
         # Get club members with student information
@@ -2602,7 +2611,6 @@ def get_club_members(club_id):
         }), 500
 
 @app.route('/api/clubs/<club_id>/members/<member_id>/role', methods=['PUT'])
-@cross_origin(origins=ALLOWED_ORIGINS, supports_credentials=True)
 def update_club_member_role(club_id, member_id):
     try:
         data = request.get_json()
@@ -2633,7 +2641,6 @@ def update_club_member_role(club_id, member_id):
         }), 500
 
 @app.route('/api/clubs/<club_id>/members/<member_id>', methods=['DELETE'])
-@cross_origin(origins=ALLOWED_ORIGINS, supports_credentials=True)
 def remove_club_member(club_id, member_id):
     try:
         # Delete member from Supabase
@@ -2655,7 +2662,6 @@ def remove_club_member(club_id, member_id):
         }), 500
 
 @app.route('/api/clubs/<club_id>/members/invite', methods=['POST'])
-@cross_origin(origins=ALLOWED_ORIGINS, supports_credentials=True)
 def invite_club_member(club_id):
     try:
         data = request.get_json()
@@ -2712,7 +2718,6 @@ def invite_club_member(club_id):
 # =====================================================
 
 @app.route('/api/admin/cleanup_orphaned_auth_users', methods=['POST', 'GET'])
-@cross_origin()
 def cleanup_orphaned_auth_users():
     """
     Clean up orphaned auth users (users in auth.users without corresponding student records).
@@ -2857,6 +2862,7 @@ def register_blueprints():
     """Register all blueprints with the Flask application."""
     # Import blueprints here to avoid circular imports
     from routes.auth import auth_bp
+    from controllers.hrOnboardingController import hr_onboarding_bp as hr_bp
     from routes.admin import admin_bp
     from routes.students import students_bp
     from routes.faculty import faculty_bp
@@ -2874,11 +2880,26 @@ def register_blueprints():
     from routes.career_courses import bp as career_courses_bp
     from routes.internships import bp as internships_bp
     from routes.exams import exams_bp
+    from routes.employeeRoutes import employee_bp
+    from routes.transportRoutes import transport_bp
+    from routes.transportRoutesApi import transport_routes_bp
+    from routes.finance import finance_bp
+    from routes.payrollRoutes import register_payroll_routes
     
+    # Quality & Accreditation Management blueprints
+    from routes.quality.dashboard import quality_dashboard_bp
+    from routes.quality.faculty import quality_faculty_bp
+    from routes.quality.analytics import quality_analytics_bp
+    from routes.quality.audits import quality_audits_bp
+    from routes.quality.grievances import quality_grievances_bp
+    from routes.quality.policies import quality_policies_bp
+    from routes.quality.accreditation import quality_accreditation_bp
+    from routes.finance_validation import validation_bp as finance_validation_bp
+
     # Register blueprints with proper URL prefixes
-    # Note: Order matters - more specific routes should be registered first
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')  # Auth routes first
-    app.register_blueprint(career_courses_bp, url_prefix='/api')  # Career courses routes
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(hr_bp)
+    app.register_blueprint(career_courses_bp, url_prefix='/api')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(students_bp, url_prefix='/api/students')
     app.register_blueprint(faculty_bp, url_prefix='/api/faculty')
@@ -2888,8 +2909,23 @@ def register_blueprints():
     app.register_blueprint(student_dashboard_bp, url_prefix='/api/student_dashboard')
     app.register_blueprint(career_roadmap_bp, url_prefix='/api/roadmap')
     app.register_blueprint(resume_analytics_bp, url_prefix='/api/resume')
+    app.register_blueprint(employee_bp)
+    app.register_blueprint(transport_bp)
+    app.register_blueprint(transport_routes_bp)
+    
+    # Quality & Accreditation Management routes
+    app.register_blueprint(quality_dashboard_bp, url_prefix='/api/quality')
+    app.register_blueprint(quality_faculty_bp, url_prefix='/api/quality')
+    app.register_blueprint(quality_analytics_bp, url_prefix='/api/quality')
+    app.register_blueprint(quality_audits_bp, url_prefix='/api/quality')
+    app.register_blueprint(quality_grievances_bp, url_prefix='/api/quality')
+    app.register_blueprint(quality_policies_bp, url_prefix='/api/quality')
+    app.register_blueprint(quality_accreditation_bp, url_prefix='/api/quality')
+    app.register_blueprint(finance_validation_bp, url_prefix='/api/finance/validate')
+    app.register_blueprint(finance_bp)
+    register_payroll_routes(app)
 
-    # General API routes (register these last to avoid route conflicts)
+    # General API routes
     app.register_blueprint(internships_bp, url_prefix='/api/internships')
     app.register_blueprint(exams_bp, url_prefix='/api')
     app.register_blueprint(attendance_bp, url_prefix='/api')
@@ -2898,7 +2934,7 @@ def register_blueprints():
     app.register_blueprint(upgraded_bp, url_prefix='/api')
     app.register_blueprint(crud_bp, url_prefix='/api')
     
-    print("All blueprints registered successfully")
+    print("All blueprints registered successfully", flush=True)
 
 @app.route('/api/test', methods=['GET'])
 def test_endpoint():
@@ -2931,7 +2967,7 @@ if __name__ == '__main__':
     try:
         print("\nRegistering blueprints...")
         register_blueprints()
-        print("✓ Successfully registered all blueprints")
+        print("Successfully registered all blueprints")
         
         # List all registered routes
         print("\nRegistered routes:")
@@ -2940,13 +2976,14 @@ if __name__ == '__main__':
             print(route)
             
     except Exception as e:
-        print(f"\n✗ Error registering blueprints: {e}")
+        print(f"\nError registering blueprints: {e}")
         import traceback
         traceback.print_exc()
         exit(1)
     
     print("\n" + "="*70)
-    print("API will be available at: http://localhost:5001")
+    port = int(os.getenv('PORT', 5001))
+    print(f"API will be available at: http://localhost:{port}")
     print("Health check: http://localhost:5001/health")
     print("Test endpoint: http://localhost:5001/api/test")
     print("Student dashboard test: http://localhost:5001/api/student_dashboard/test")

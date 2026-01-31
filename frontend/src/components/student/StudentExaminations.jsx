@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 import { 
   DocumentArrowDownIcon, 
   CalendarIcon, 
@@ -161,7 +161,7 @@ const StudentExaminations = () => {
 
       // Call our backend API to get the hall ticket PDF
       // Pass student_id as query parameter for public access
-      const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/student_dashboard/hall-ticket?exam_id=${examId}&student_id=${studentId}`;
+      const apiUrl = `${import.meta.env.VITE_API_URL || API_URL.replace(/\/$/, '')}/student_dashboard/hall-ticket?exam_id=${examId}&student_id=${studentId}`;
       console.log('API URL:', apiUrl);
 
       const response = await fetch(apiUrl, {

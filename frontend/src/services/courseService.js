@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5001';
+import { API_URL } from '../config';
+
+const API_BASE_URL = API_URL.replace(/\/$/, '');
 
 // Sample data to use as fallback
 const SAMPLE_COURSES = [

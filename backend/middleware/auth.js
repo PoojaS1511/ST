@@ -1,134 +1,130 @@
-const jwt = require('jsonwebtoken');
-const { supabase, TABLES } = require('../config/database');
+const { createClient } = require('@supabase/supabase-js');
+const { TABLES } = require('../config/database');
 const { logError } = require('../utils/logger');
 
-// Protect routes - requires authentication
+// Create Supabase Admin Client
+const supabaseAdmin = createClient(
+  'https://qkaaoeismqnhjyikgkme.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrYWFvZWlzbXFuaGp5aWtna21lIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDMwMjU3NCwiZXhwIjoyMDY5ODc4NTc0fQ.L1ZCNGBbQqrRjCI9IrmounuEtwux4yBmhvPBR4vU5Uw' // REQUIRED
+);
+
+// ==========================================
+// PROTECT ROUTES (SUPABASE AUTH)
+// ==========================================
 exports.protect = async (req, res, next) => {
-  let token;
-  
-  // Get token from header
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    token = req.headers.authorization.split(' ')[1];
-  } 
-  // Get token from cookie
-  else if (req.cookies.token) {
-    token = req.cookies.token;
-  }
-
-  // Check if token exists
-  if (!token) {
-    return res.status(401).json({ 
-      status: 'error',
-      message: 'Not authorized to access this route. No token provided.'
-    });
-  }
-
   try {
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Get user from the database
-    const { data: user, error } = await supabase
-      .from(TABLES.USERS)
-      .select('*')
-      .eq('id', decoded.id)
-      .single();
+    // Allow preflight requests to pass without auth
+    if (req.method === 'OPTIONS') return next();
 
-    if (error || !user) {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         status: 'error',
-        message: 'Not authorized. User not found.'
+        message: 'Not authorized. No token provided.'
       });
     }
 
-    // Check if user is active
-    if (!user.is_active) {
+    const token = authHeader.replace('Bearer ', '');
+
+    // 🔐 Verify Supabase JWT
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+
+    if (error || !data?.user) {
       return res.status(401).json({
+        status: 'error',
+        message: 'Invalid or expired token.'
+      });
+    }
+
+    const authUser = data.user;
+
+    // 🔎 Fetch app user from DB
+    const { data: user, error: userError } = await supabaseAdmin
+      .from(TABLES.USERS)
+      .select('*')
+      .eq('auth_id', authUser.id) // IMPORTANT: Supabase auth user id
+      .single();
+
+    if (userError || !user) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'User not registered in application.'
+      });
+    }
+
+    if (!user.is_active) {
+      return res.status(403).json({
         status: 'error',
         message: 'User account is deactivated.'
       });
     }
 
-    // Add user to request object
+    // Attach user
     req.user = user;
+    req.authUser = authUser;
+
     next();
   } catch (error) {
     logError(error);
-    
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        status: 'error',
-        message: 'Not authorized. Invalid token.'
-      });
-    }
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        status: 'error',
-        message: 'Session expired. Please log in again.'
-      });
-    }
-    
     res.status(500).json({
       status: 'error',
-      message: 'Server error during authentication.'
+      message: 'Authentication failed.'
     });
   }
 };
 
-// Grant access to specific roles
+// ==========================================
+// ROLE AUTHORIZATION
+// ==========================================
 exports.authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    if (!req.user || !roles.includes(req.user.role)) {
       return res.status(403).json({
         status: 'error',
-        message: `User role ${req.user.role} is not authorized to access this route`
+        message: 'User role not authorized.'
       });
     }
     next();
   };
 };
 
-// Check if user is the owner of the resource or admin
-exports.checkOwnership = (model, paramName = 'id') => {
+// ==========================================
+// OWNERSHIP CHECK
+// ==========================================
+exports.checkOwnership = (table, paramName = 'id') => {
   return async (req, res, next) => {
     try {
+      if (req.user.role === 'admin') return next();
+
       const resourceId = req.params[paramName];
-      const userId = req.user.id;
-      
-      // Admin can access any resource
-      if (req.user.role === 'admin') {
-        return next();
-      }
-      
-      // Get the resource
-      const { data: resource, error } = await supabase
-        .from(model)
+
+      const { data: resource, error } = await supabaseAdmin
+        .from(table)
         .select('user_id')
         .eq('id', resourceId)
         .single();
-      
+
       if (error || !resource) {
         return res.status(404).json({
           status: 'error',
-          message: 'Resource not found'
+          message: 'Resource not found.'
         });
       }
-      
-      // Check if user is the owner
-      if (resource.user_id !== userId) {
+
+      if (resource.user_id !== req.user.id) {
         return res.status(403).json({
           status: 'error',
-          message: 'Not authorized to access this resource'
+          message: 'Access denied.'
         });
       }
-      
+
       next();
     } catch (error) {
       logError(error);
       res.status(500).json({
         status: 'error',
-        message: 'Server error during authorization check'
+        message: 'Authorization check failed.'
       });
     }
   };

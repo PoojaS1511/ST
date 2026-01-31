@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ROLES } from './constants/roles';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -38,34 +39,14 @@ const StudentCareerAssistant = lazy(() => import('./components/student/StudentCa
 const StudentNotifications = lazy(() => import('./components/student/StudentNotifications'));
 const StudentSettings = lazy(() => import('./components/student/StudentSettings'));
 const FacultyDashboard = lazy(() => import('./pages/faculty/FacultyDashboard'));
-const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminOverview = lazy(() => import('./components/admin/AdminOverview'));
 const DriverDashboard = lazy(() => import('./pages/driver/DriverDashboard'));
 const AddStudent = lazy(() => import('./components/admin/AddStudent'));
-const AdminRoutes = lazy(async () => {
-  try {
-    const module = await import('./routes/AdminRoutes');
-    return { default: module.default };
-  } catch (error) {
-    console.error('Failed to load AdminRoutes:', error);
-    // Return a simple error component as fallback
-    return {
-      default: () => (
-        <div className="p-4 bg-red-50 text-red-700 rounded-lg">
-          <h2 className="font-bold text-lg mb-2">Error Loading Admin Panel</h2>
-          <p>Failed to load the admin interface. Please try refreshing the page.</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Refresh Page
-          </button>
-        </div>
-      )
-    };
-  }
-});
+const AdminRoutes = lazy(() => import('./routes/AdminRoutes'));
 const FacultyRoutes = lazy(() => import('./routes/FacultyRoutes'));
+const FinanceRoutes = lazy(() => import('./routes/FinanceRoutes'));
+const HROnboardingRoutes = lazy(() => import('./routes/HROnboardingRoutes'));
+
 // Import StudentProvider and StudentContext
 import StudentContext, { StudentProvider, useStudent } from './contexts/StudentContext';
 
@@ -115,7 +96,6 @@ const AdminLayout = () => (
         </Suspense>
       </main>
     </div>
-    <Toaster position="top-right" />
   </div>
 );
 
@@ -129,7 +109,6 @@ const AppLayout = () => (
       </Suspense>
     </main>
     <Footer />
-    <Toaster position="top-right" />
   </div>
 );
 
@@ -172,22 +151,38 @@ const AppContent = () => {
         />
         
         {/* Protected Admin Routes */}
-        <Route 
-          path="admin/*" 
+        <Route
+          path="admin/*"
           element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]} redirectPath="/admin/login">
-              <AdminRoutes />
-            </ProtectedRoute>
+            <Suspense fallback={<LoadingScreen />}>
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+                <AdminRoutes />
+              </ProtectedRoute>
+            </Suspense>
           }
         />
-        
+
+        {/* Finance Module Routes */}
+        <Route 
+          path="finance/*" 
+          element={
+            <Suspense fallback={<LoadingScreen />}>
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.FACULTY, ROLES.STAFF]}>
+                <FinanceRoutes />
+              </ProtectedRoute>
+            </Suspense>
+          }
+        />
+
         {/* Faculty Routes */}
         <Route 
           path="faculty" 
           element={
-            <ProtectedRoute allowedRoles={[ROLES.FACULTY]}>
-              <FacultyDashboard />
-            </ProtectedRoute>
+            <Suspense fallback={<LoadingScreen />}>
+              <ProtectedRoute allowedRoles={[ROLES.FACULTY]}>
+                <FacultyDashboard />
+              </ProtectedRoute>
+            </Suspense>
           } 
         >
           <Route index element={<FacultyRoutes />} />
@@ -356,27 +351,43 @@ const AppContent = () => {
         <Route 
           path="driver" 
           element={
-            <ProtectedRoute allowedRoles={[ROLES.DRIVER]}>
-              <DriverDashboard />
-            </ProtectedRoute>
+            <Suspense fallback={<LoadingScreen />}>
+              <ProtectedRoute allowedRoles={[ROLES.DRIVER]}>
+                <DriverDashboard />
+              </ProtectedRoute>
+            </Suspense>
           } 
         >
           <Route index element={<DriverDashboard />} />
           <Route path="*" element={<Navigate to="/driver" replace />} />
         </Route>
         
-        {/* 404 Route */}
+        {/* Final catch-all route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
   );
 };
 
-// Main App component with AuthProvider
+// Create QueryClient instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+// Main App component with AuthProvider and QueryClient
 const App = () => (
-  <AuthProvider>
-    <AppContent />
-  </AuthProvider>
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  </QueryClientProvider>
 );
 
 export default App;

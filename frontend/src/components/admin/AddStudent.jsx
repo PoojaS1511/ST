@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, UserPlusIcon, CalendarIcon, EnvelopeIcon, PhoneIcon, HomeIcon, IdentificationIcon, UserCircleIcon, AcademicCapIcon, BookOpenIcon, ClockIcon, ScaleIcon, TagIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { API_URL } from '../../config';
 
 const AddStudent = () => {
   const navigate = useNavigate();
@@ -67,8 +68,8 @@ const AddStudent = () => {
     updated_at: new Date().toISOString()
   });
 
-  // Use Vite env var if provided, otherwise fall back to localhost:5001
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
+  // Use Vite env var if provided, otherwise fall back to shared config
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || API_URL; // API_URL includes /api by default
   const { user } = useAuth();
 
   // Blood groups and other constants

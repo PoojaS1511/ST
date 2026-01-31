@@ -3,7 +3,13 @@ from flask_cors import CORS
 from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS to allow credentials and specific origins
+CORS(app, 
+     origins=['http://localhost:3001', 'http://127.0.0.1:3001'],
+     supports_credentials=True,
+     allow_headers=['Content-Type', 'Authorization'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 
 # Mock data
 MOCK_COURSES = [
@@ -247,10 +253,32 @@ def get_attendance():
             'total_students': 30,
             'present_count': 28,
             'absent_count': 2,
-            'percentage': 93.3
         }
     ]
     return jsonify({'success': True, 'data': mock_attendance})
+
+# Student statistics endpoint for admin dashboard
+@app.route('/api/students/stats', methods=['GET'])
+def get_student_stats():
+    mock_stats = {
+        'total': 1250,
+        'male': 750,
+        'female': 500,
+        'departments': 8,
+        'faculty': 85
+    }
+    return jsonify({'success': True, 'data': mock_stats})
+
+# Transport endpoint
+@app.route('/api/transport/dashboard', methods=['GET'])
+def get_transport_dashboard():
+    mock_transport = {
+        'total_buses': 10,
+        'active_routes': 8,
+        'total_students': 150,
+        'total_faculty': 25
+    }
+    return jsonify({'success': True, 'data': mock_transport})
 
 @app.route('/api/admin/attendance', methods=['POST'])
 def mark_attendance():

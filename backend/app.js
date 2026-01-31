@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const supabase = require('./config/supabase');
+const supabase = require('./supabase_client');
 
 // Initialize Express app
 const app = express();
@@ -98,13 +98,12 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'x-api-key'],
   exposedHeaders: ['Content-Length', 'Content-Type', 'Authorization'],
-  maxAge: 600, // 10 minutes
-  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+  maxAge: 600,
+  optionsSuccessStatus: 200
 };
 
 // Apply CORS with options - this must be before any route definitions
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Enable preflight for all routes
 
 // Import routes
 const studentRoutes = require('./routes/students');
@@ -115,7 +114,16 @@ const attendanceRoutes = require('./routes/attendance');
 const feeRoutes = require('./routes/fees');
 const clubRoutes = require('./routes/clubs');
 const internshipRoutes = require('./routes/internships');
-const analyticsRoutes = require('./routes/analytics');
+// const analyticsRoutes = require('./routes/analytics');
+
+// Quality & Accreditation Management Routes
+const qualityDashboardRoutes = require('./routes/quality/dashboard');
+const qualityFacultyRoutes = require('./routes/quality/faculty');
+const qualityAuditsRoutes = require('./routes/quality/audits');
+const qualityGrievancesRoutes = require('./routes/quality/grievances');
+const qualityPoliciesRoutes = require('./routes/quality/policies');
+const qualityAccreditationRoutes = require('./routes/quality/accreditation');
+const qualityAnalyticsRoutes = require('./routes/quality/analytics');
 
 // Use routes
 app.use('/api/students', studentRoutes);
@@ -126,7 +134,16 @@ app.use('/api/exams', examRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/clubs', clubRoutes);
 app.use('/api/fees', feeRoutes);
-app.use('/api/analytics', analyticsRoutes);
+// app.use('/api/analytics', analyticsRoutes);
+
+// Quality & Accreditation Management Routes
+app.use('/api/quality/dashboard', qualityDashboardRoutes);
+app.use('/api/quality/faculty', qualityFacultyRoutes);
+app.use('/api/quality/audits', qualityAuditsRoutes);
+app.use('/api/quality/grievances', qualityGrievancesRoutes);
+app.use('/api/quality/policies', qualityPoliciesRoutes);
+app.use('/api/quality/accreditation', qualityAccreditationRoutes);
+app.use('/api/quality/analytics', qualityAnalyticsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

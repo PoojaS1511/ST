@@ -162,11 +162,31 @@ export const signUpWithEmail = async (email, password, userData) => {
 };
 
 /**
- * Get the authentication token from localStorage
- * Checks both 'access_token' (Supabase) and 'token' (legacy) keys
+ * Get the authentication token from Supabase session
+ * Checks Supabase session first, then falls back to legacy keys
  * @returns {string|null} The authentication token or null if not found
  */
 export const getAuthToken = () => {
+  try {
+    // First try to get from Supabase session storage
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    if (supabaseUrl) {
+      const url = new URL(supabaseUrl);
+      const storageKey = `sb-${url.hostname}-auth-token`;
+      const storedSession = localStorage.getItem(storageKey);
+
+      if (storedSession) {
+        const session = JSON.parse(storedSession);
+        if (session.access_token) {
+          return session.access_token;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('Error getting token from Supabase session:', error);
+  }
+
+  // Fallback to legacy keys
   return localStorage.getItem('access_token') || localStorage.getItem('token') || null;
 };
 

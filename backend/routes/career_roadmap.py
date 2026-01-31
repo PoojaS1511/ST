@@ -173,7 +173,10 @@ def generate_roadmap():
         if request.method == 'OPTIONS':
             print("Handling OPTIONS request")
             response = jsonify({"status": "preflight"})
-            response.headers.add('Access-Control-Allow-Origin', request.headers.get('Origin', '*'))
+            origin = request.headers.get('Origin', 'http://localhost:3001')
+            allowed_origins = ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001']
+            if origin in allowed_origins:
+                response.headers.add('Access-Control-Allow-Origin', origin)
             response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
             response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
             response.headers.add('Access-Control-Allow-Credentials', 'true')

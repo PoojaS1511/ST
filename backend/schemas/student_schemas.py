@@ -127,7 +127,7 @@ class SubjectResponse(SubjectBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class AttendanceResponse(AttendanceBase):
     id: UUID
@@ -137,7 +137,7 @@ class AttendanceResponse(AttendanceBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class MarkResponse(MarkBase):
     id: UUID
@@ -147,7 +147,7 @@ class MarkResponse(MarkBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class FeeResponse(FeeBase):
     id: UUID
@@ -156,7 +156,7 @@ class FeeResponse(FeeBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class InternshipResponse(InternshipBase):
     id: UUID
@@ -165,7 +165,7 @@ class InternshipResponse(InternshipBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Dashboard schemas
 class DashboardStats(BaseModel):
@@ -178,4 +178,4 @@ class DashboardStats(BaseModel):
     recent_activities: List[dict]
 
     class Config:
-        orm_mode = True
+        from_attributes = True

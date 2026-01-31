@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
+import { API_URL } from '../config';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || API_URL; // Uses frontend config which includes /api
 
 const handleResponse = async (response) => {
   if (!response.ok) {

@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import '../../styles/adminSidebar.css';
 // Import all icons from heroicons
-import { 
+import {
   // Outline Icons
   AcademicCapIcon,
+  BanknotesIcon,
   BellAlertIcon,
   BookOpenIcon,
   BookmarkSquareIcon,
+  CalculatorIcon,
+  CheckCircleIcon,
   Cog6ToothIcon,
   KeyIcon,
   BuildingOffice2Icon,
@@ -20,10 +24,12 @@ import {
   CpuChipIcon,
   CurrencyDollarIcon,
   DevicePhoneMobileIcon,
+  DocumentDuplicateIcon,
   DocumentTextIcon,
   FireIcon,
   HomeIcon,
   LightBulbIcon,
+  PencilSquareIcon,
   PhotoIcon,
   ServerIcon,
   ShieldCheckIcon,
@@ -32,6 +38,7 @@ import {
   UserCircleIcon,
   UserGroupIcon as UserGroupOutlineIcon,
   UserIcon,
+  UserPlusIcon,
   WifiIcon,
   WrenchScrewdriverIcon,
   // Aliases for outline icons
@@ -43,7 +50,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 // Solid Icons
-import { 
+import {
   BookOpenIcon as BookOpenSolidIcon,
   BriefcaseIcon,
   ClipboardDocumentCheckIcon as ClipboardDocumentCheckSolidIcon,
@@ -53,28 +60,6 @@ import {
 } from '@heroicons/react/24/solid';
 
 const AdminSidebar = () => {
-  // Custom scrollbar styles
-  const scrollbarStyle = {
-    '&::-webkit-scrollbar': {
-      width: '6px',
-    },
-    '&::-webkit-scrollbar-track': {
-      background: 'rgba(29, 57, 94, 0.9)',
-      borderRadius: '10px',
-    },
-    '&::-webkit-scrollbar-thumb': {
-      backgroundColor: '#2d4b7c',
-      borderRadius: '10px',
-      border: '1px solid #3a5a8c',
-    },
-    '&::-webkit-scrollbar-thumb:hover': {
-      backgroundColor: '#3a5a8c',
-    },
-    height: 'calc(100vh - 64px)',
-    overflowY: 'auto',
-    scrollbarWidth: 'thin',
-    scrollbarColor: '#2d4b7c rgba(29, 57, 94, 0.9)',
-  };
   const location = useLocation();
 
   const [expandedSections, setExpandedSections] = useState({
@@ -83,7 +68,11 @@ const AdminSidebar = () => {
     clubs: location.pathname.startsWith('/admin/academics/clubs'),
     infrastructure: location.pathname.startsWith('/admin/infrastructure'),
     it: location.pathname.startsWith('/admin/it'),
-    sports: location.pathname.startsWith('/admin/sports')
+    sports: location.pathname.startsWith('/admin/sports'),
+    hr: location.pathname.startsWith('/admin/hr'),
+    finance: location.pathname.startsWith('/admin/finance'),
+    payroll: location.pathname.startsWith('/admin/payroll'),
+    quality: location.pathname.startsWith('/admin/quality')
   });
 
   const toggleSection = (section) => {
@@ -175,8 +164,8 @@ const AdminSidebar = () => {
         }
       ]
     },
-    { 
-      name: 'Faculty Management', 
+    {
+      name: 'Faculty Management',
       path: 'faculty',
       icon: UserCircleIcon,
       color: 'text-white',
@@ -186,10 +175,27 @@ const AdminSidebar = () => {
       onClick: (e) => {
         e.preventDefault();
         e.stopPropagation();
-        // Open the faculty admin system on port 8082 in a new tab
+        // Open faculty admin system on port 8082 in a new tab
         const newWindow = window.open('http://localhost:8082', '_blank', 'noopener,noreferrer');
         if (newWindow) newWindow.opener = null;
       }
+    },
+    {
+      name: 'HR Onboarding',
+      path: 'hr',
+      icon: BriefcaseIcon,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100',
+      hasChildren: true,
+      children: [
+        { name: 'Dashboard', path: 'hr', fullPath: '/admin/hr', icon: ChartBarIcon },
+        { name: 'Registration', path: 'hr/registration', fullPath: '/admin/hr/registration', icon: PencilSquareIcon },
+        { name: 'Documents', path: 'hr/documents', fullPath: '/admin/hr/documents', icon: DocumentDuplicateIcon },
+        { name: 'Role Assignment', path: 'hr/role-assignment', fullPath: '/admin/hr/role-assignment', icon: UserPlusIcon },
+        { name: 'Work Policy', path: 'hr/work-policy', fullPath: '/admin/hr/work-policy', icon: ShieldCheckIcon },
+        { name: 'Salary Setup', path: 'hr/salary-setup', fullPath: '/admin/hr/salary-setup', icon: BanknotesIcon },
+        { name: 'System Access', path: 'hr/system-access', fullPath: '/admin/hr/system-access', icon: ComputerDesktopIcon }
+      ]
     },
     { 
       name: 'Academic Management', 
@@ -252,53 +258,177 @@ const AdminSidebar = () => {
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-100'
     },
-    { 
-      name: 'Transport', 
+    {
+      name: 'Transport',
       path: 'transport',
       icon: TruckIcon,
       color: 'text-white',
-      bgColor: 'bg-amber-100',
-      external: true,
-      externalUrl: 'http://localhost:8080',
-      onClick: (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // Open the transport management system on port 8080 in a new tab
-        const newWindow = window.open('http://localhost:8080', '_blank', 'noopener,noreferrer');
-        if (newWindow) newWindow.opener = null;
-      }
+      bgColor: 'bg-amber-100'
     },
-    { 
-      name: 'Financial Administration', 
-      path: 'financial',
-      icon: CurrencyDollarSolidIcon,
-      color: 'text-white',
-      bgColor: 'bg-green-100',
-      external: true,
-      externalUrl: 'http://localhost:5000',
-      onClick: (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // Open the financial administration system on port 5000 in a new tab
-        const newWindow = window.open('http://localhost:5000', '_blank', 'noopener,noreferrer');
-        if (newWindow) newWindow.opener = null;
-      }
+    {
+      name: 'Finance',
+      path: 'finance',
+      icon: CurrencyDollarOutlineIcon,
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-100',
+      hasChildren: true,
+      children: [
+        {
+          name: 'Dashboard',
+          path: 'finance/dashboard',
+          fullPath: '/admin/finance/dashboard'
+        },
+        {
+          name: 'Student Fees',
+          path: 'finance/student-fees',
+          fullPath: '/admin/finance/student-fees'
+        },
+        {
+          name: 'Staff Payroll',
+          path: 'finance/staff-payroll',
+          fullPath: '/admin/finance/staff-payroll'
+        },
+        {
+          name: 'Expenses',
+          path: 'finance/expenses',
+          fullPath: '/admin/finance/expenses'
+        },
+        {
+          name: 'Vendors',
+          path: 'finance/vendors',
+          fullPath: '/admin/finance/vendors'
+        },
+        {
+          name: 'Budget Allocation',
+          path: 'finance/budget',
+          fullPath: '/admin/finance/budget'
+        },
+        {
+          name: 'Maintenance',
+          path: 'finance/maintenance',
+          fullPath: '/admin/finance/maintenance'
+        },
+        {
+          name: 'AI Assistant',
+          path: 'finance/ai-assistant',
+          fullPath: '/admin/finance/ai-assistant'
+        }
+      ]
     },
-    { 
-      name: 'Fees', 
+    {
+      name: 'Payroll Management',
+      path: 'payroll',
+      icon: CurrencyDollarIcon,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-100',
+      hasChildren: true,
+      children: [
+        {
+          name: 'Dashboard',
+          path: 'dashboard',
+          fullPath: '/admin/payroll/dashboard',
+          icon: ChartBarIcon
+        },
+        {
+          name: 'Payroll List',
+          path: 'list',
+          fullPath: '/admin/payroll/list',
+          icon: ClipboardDocumentCheckIcon
+        },
+        {
+          name: 'Calculation',
+          path: 'calculation',
+          fullPath: '/admin/payroll/calculation',
+          icon: Cog6ToothIcon
+        },
+        {
+          name: 'Approval',
+          path: 'approval',
+          fullPath: '/admin/payroll/approval',
+          icon: ClipboardDocumentCheckIcon
+        },
+        {
+          name: 'Payslip',
+          path: 'payslip',
+          fullPath: '/admin/payroll/payslip',
+          icon: DocumentTextIcon
+        },
+        {
+          name: 'Notifications',
+          path: 'notifications',
+          fullPath: '/admin/payroll/notifications',
+          icon: BellAlertIcon
+        }
+      ]
+    },
+    {
+      name: 'Quality Management',
+      path: 'quality',
+      icon: ShieldCheckIcon,
+      color: 'text-teal-600',
+      bgColor: 'bg-teal-100',
+      hasChildren: true,
+      children: [
+        {
+          name: 'Dashboard',
+          path: 'quality/dashboard',
+          fullPath: '/admin/quality/dashboard',
+          icon: ChartBarIcon
+        },
+        {
+          name: 'Faculty',
+          path: 'quality/faculty',
+          fullPath: '/admin/quality/faculty',
+          icon: UserGroupOutlineIcon
+        },
+        {
+          name: 'Analytics',
+          path: 'quality/analytics',
+          fullPath: '/admin/quality/analytics',
+          icon: ChartBarIcon
+        },
+        {
+          name: 'Audits',
+          path: 'quality/audits',
+          fullPath: '/admin/quality/audits',
+          icon: ClipboardDocumentCheckIcon
+        },
+        {
+          name: 'Grievances',
+          path: 'quality/grievances',
+          fullPath: '/admin/quality/grievances',
+          icon: BellAlertIcon
+        },
+        {
+          name: 'Policies',
+          path: 'quality/policies',
+          fullPath: '/admin/quality/policies',
+          icon: DocumentTextIcon
+        },
+        {
+          name: 'Accreditation',
+          path: 'quality/accreditation',
+          fullPath: '/admin/quality/accreditation',
+          icon: TrophyIcon
+        }
+      ]
+    },
+    {
+      name: 'Fees',
       path: 'fees',
       icon: CurrencyDollarOutlineIcon,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-100'
     },
-    { 
-      name: 'Admissions', 
+    {
+      name: 'Admissions',
       path: 'admissions',
       icon: UserGroupOutlineIcon,
       color: 'text-cyan-600',
       bgColor: 'bg-cyan-100'
     },
-    {       name: 'Clubs',
+    {
+      name: 'Clubs',
       path: 'clubs',
       icon: UserGroupOutlineIcon,
       color: 'text-indigo-600',
@@ -360,24 +490,8 @@ const AdminSidebar = () => {
       color: 'text-fuchsia-600',
       bgColor: 'bg-fuchsia-100'
     },
-    { 
-      name: 'AI Governance Dashboard', 
-      path: 'ai-governance',
-      icon: ShieldCheckOutlineIcon,
-      color: 'text-indigo-600',
-      bgColor: 'bg-indigo-100',
-      external: true,
-      externalUrl: 'http://localhost:4000',
-      onClick: (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // Open the AI Governance Dashboard in a new tab
-        const newWindow = window.open('http://localhost:4000', '_blank', 'noopener,noreferrer');
-        if (newWindow) newWindow.opener = null;
-      }
-    },
-    { 
-      name: 'IT & Digital Services', 
+    {
+      name: 'IT & Digital Services',
       path: 'it',
       icon: CpuChipIcon,
       color: 'text-purple-600',
@@ -492,9 +606,8 @@ const AdminSidebar = () => {
 
 
   return (
-    <div 
-      className="flex flex-col bg-[#1d395e] border-r border-gray-200 w-64 fixed left-0 top-0 pt-16 z-40"
-      style={scrollbarStyle}
+    <div
+      className="flex flex-col bg-[#1d395e] border-r border-gray-200 w-64 fixed left-0 top-0 z-40 h-screen admin-sidebar"
     >
       {/* Logo */}
       <div className="flex items-center justify-center h-16 px-4 border-b border-gray-300 border-opacity-20">

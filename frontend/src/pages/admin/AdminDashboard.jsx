@@ -1,17 +1,15 @@
 import React, { memo, useEffect, Suspense } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import AdminHeader from '../../components/admin/AdminHeader';
 
 // Memoize the component to prevent unnecessary re-renders
-const AdminDashboard = memo(() => {
+const AdminDashboard = memo(({ children }) => {
   const location = useLocation();
 
   // Debug: Log the current path (only in development)
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('AdminDashboard - Current path:', location.pathname);
-    }
+    console.log('AdminDashboard - Current path:', location.pathname);
   }, [location.pathname]);
 
   return (
@@ -32,7 +30,7 @@ const AdminDashboard = memo(() => {
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
               </div>
             }>
-              <Outlet />
+              {children}
             </Suspense>
           </main>
         </div>

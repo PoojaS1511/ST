@@ -4,7 +4,8 @@
     <title>CORS Test</title>
     <script>
         async function testApi() {
-            const url = 'http://localhost:5000/api/academics/courses';
+            const API_URL = window.API_URL || 'http://localhost/api';
+            const url = `${API_URL}/academics/courses`;
             const resultDiv = document.getElementById('result');
             
             try {

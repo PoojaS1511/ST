@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const supabase = require('../config/supabase');
+const { supabase } = require('../supabase_client');
 const { v4: uuidv4 } = require('uuid');
 
 // Helper function to format internship data

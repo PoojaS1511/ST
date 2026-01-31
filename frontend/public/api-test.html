@@ -10,7 +10,8 @@
             try {
                 // Test 1: Direct fetch to backend
                 resultDiv.innerHTML += '<h3>Test 1: Direct fetch to backend</h3>';
-                const directResponse = await fetch('http://localhost:5000/api/academics/courses');
+                const API_URL = window.API_URL || 'http://localhost/api';
+                const directResponse = await fetch(`${API_URL}/academics/courses`);
                 const directData = await directResponse.json();
                 resultDiv.innerHTML += `<pre>Status: ${directResponse.status}</pre>`;
                 resultDiv.innerHTML += `<pre>${JSON.stringify(directData, null, 2)}</pre>`;

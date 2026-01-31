@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Tabs, Tab, Box } from '@mui/material';
 import { Link } from 'react-router-dom';
 import Courses from './Courses';
@@ -7,8 +7,7 @@ import Subjects from './Subjects';
 import Faculty from './Faculty';
 import ExamSchedule from './ExamSchedule';
 import MarksEntry from './MarksEntry';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import toast from 'react-hot-toast';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;

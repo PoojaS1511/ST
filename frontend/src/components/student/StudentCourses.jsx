@@ -15,7 +15,7 @@ import {
   ExclamationCircleIcon
 } from '@heroicons/react/24/outline';
 import { supabase } from '../../lib/supabase';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 
 const StudentCourses = () => {
   const { user } = useAuth();
@@ -182,8 +182,7 @@ const StudentCourses = () => {
                 <option value="">All Categories</option>
                 <option value="AI, Data Science">AI & Data Science</option>
                 <option value="Web Development">Web Development</option>
-                <option value="Finance">Finance</option>
-              </select>
+                              </select>
               <select
                 className="px-3 py-1.5 border border-gray-300 rounded-md text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                 value={filters.level}

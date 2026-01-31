@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import apiService from '../../services/api'
-import { 
-  TruckIcon, 
-  MapPinIcon, 
-  ClockIcon, 
+import {
+  TruckIcon,
+  MapPinIcon,
+  ClockIcon,
   PhoneIcon,
   CurrencyDollarIcon,
   ExclamationTriangleIcon,
@@ -15,6 +15,7 @@ const StudentTransport = () => {
   const { user } = useAuth()
   const [transportData, setTransportData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     fetchTransportData()
@@ -24,78 +25,72 @@ const StudentTransport = () => {
     try {
       if (!user) return
 
-      // Mock transport data
-      const mockTransportData = {
-        student: {
-          id: 1,
-          full_name: 'John Doe',
-          transport_required: true,
-          city: 'Chennai'
-        },
-        route_info: {
-          route_number: 'Route 5',
-          route_name: 'Anna Nagar - College',
-          bus_number: 'TN 09 AB 1234',
-          driver_name: 'Raman Kumar',
-          driver_phone: '+91 9876543225',
-          conductor_name: 'Suresh Babu',
-          conductor_phone: '+91 9876543226'
-        },
-        schedule: {
-          pickup_time: '7:30 AM',
-          pickup_location: 'Anna Nagar Bus Stop',
-          drop_time: '6:00 PM',
-          drop_location: 'Anna Nagar Bus Stop',
-          travel_time: '45 minutes'
-        },
-        stops: [
-          { name: 'Anna Nagar Bus Stop', time: '7:30 AM' },
-          { name: 'Kilpauk Medical College', time: '7:45 AM' },
-          { name: 'Egmore Railway Station', time: '8:00 AM' },
-          { name: 'Cube Arts College', time: '8:15 AM' }
-        ],
-        fees: {
-          monthly_fee: 2500,
-          annual_fee: 25000,
-          security_deposit: 5000,
-          last_payment_date: '2025-01-01',
-          next_due_date: '2025-02-01'
-        }
+      // Get current user's student ID from user object
+      const currentStudentId = user?.student_id || user?.id
+
+      if (!currentStudentId) {
+        setError('Student ID not found. Please contact administrator.')
+        setLoading(false)
+        return
       }
 
-      setTransportData(mockTransportData)
+      // Fetch transport students data from the correct API endpoint
+      const response = await fetch(`/api/transport/students?student_id=${currentStudentId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.access_token || ''}`
+        }
+      })
 
-      if (!studentData) return
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
 
-      if (studentData.transport_required) {
-        // Mock transport allocation data
+      const result = await response.json()
+
+      if (result.success && result.data && result.data.length > 0) {
+        // Get the student record for the current user
+        const studentData = result.data[0]
+
+        // Create transport info from transport_students table data
         const transportInfo = {
-          student: studentData,
+          student: {
+            id: studentData.id,
+            student_id: studentData.student_id,
+            name: studentData.name,
+            email: studentData.email,
+            phone: studentData.phone,
+            route_id: studentData.route_id,
+            route_name: studentData.route_name,
+            pickup_point: studentData.pickup_point,
+            status: studentData.status,
+            fee_status: studentData.fee_status
+          },
           allocation: {
-            route_number: 'RT-15',
-            route_name: 'Chennai - Tambaram Route',
-            bus_number: 'TN 07 AB 1234',
-            pickup_point: 'Tambaram Bus Stand',
+            route_number: studentData.route_id || 'RT-01',
+            route_name: studentData.route_name || 'College Route',
+            bus_number: 'TN-09-AB-1234', // Default bus number
+            pickup_point: studentData.pickup_point || 'College Campus',
             pickup_time: '07:30 AM',
             drop_time: '06:00 PM',
             distance: '25 km',
             duration: '45 minutes',
             driver: {
-              name: 'Mr. Rajesh Kumar',
+              name: 'Rajesh Kumar', // Default driver
               phone: '+91 9876543210',
               license: 'TN1234567890'
             },
             conductor: {
-              name: 'Mr. Suresh',
+              name: 'Transport Staff',
               phone: '+91 9876543211'
             },
             stops: [
-              { name: 'Tambaram Bus Stand', time: '07:30 AM', distance: '0 km' },
-              { name: 'Chrompet Junction', time: '07:40 AM', distance: '5 km' },
-              { name: 'Pallavaram', time: '07:50 AM', distance: '10 km' },
-              { name: 'Meenambakkam', time: '08:00 AM', distance: '15 km' },
-              { name: 'Guindy', time: '08:10 AM', distance: '20 km' },
-              { name: 'Cube Arts College', time: '08:15 AM', distance: '25 km' }
+              { name: studentData.pickup_point || 'College Campus', time: '07:30 AM', distance: '0 km' },
+              { name: 'Main Gate', time: '07:35 AM', distance: '1 km' },
+              { name: 'Bus Stop A', time: '07:45 AM', distance: '5 km' },
+              { name: 'Bus Stop B', time: '07:55 AM', distance: '10 km' },
+              { name: 'Terminal', time: '08:05 AM', distance: '15 km' }
             ],
             fees: {
               monthly_fee: 2500,
@@ -113,13 +108,16 @@ const StudentTransport = () => {
             ]
           }
         }
+
         setTransportData(transportInfo)
       } else {
-        setTransportData({ student: studentData, allocation: null })
+        // No transport data found for this user
+        setTransportData(null)
       }
 
     } catch (error) {
       console.error('Error fetching transport data:', error)
+      setError('Failed to load transport information. Please try again later.')
     } finally {
       setLoading(false)
     }
